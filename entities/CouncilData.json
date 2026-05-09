@@ -1,0 +1,61 @@
+{
+  "name": "CouncilData",
+  "type": "object",
+  "properties": {
+    "councilId": {
+      "type": "string",
+      "description": "The council identifier (e.g. academic-council)"
+    },
+    "info": {
+      "type": "object",
+      "description": "President-editable council info: mission, homepage, achievement, mainProject, padlets",
+      "additionalProperties": true
+    },
+    "initiatives": {
+      "type": "array",
+      "description": "Full initiative objects",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "pendingList": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "approvedList": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "rejectedList": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "calendarEvents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "successfulInitiatives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": [
+    "councilId"
+  ]
+}
