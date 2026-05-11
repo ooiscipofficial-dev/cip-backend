@@ -13,20 +13,26 @@ export async function getCouncilData(councilId) {
   return await councilApi.getCouncilData(councilId);
 }
 
+export async function getSystemSettings() {
+  return await councilApi.getSystemSettings();
+}
+
+export async function saveSystemSettings(settings) {
+  return await councilApi.saveSystemSettings(settings);
+}
+
 export async function syncCouncilToCloud(councilId, data) {
   try {
-    // We send a flat object to the worker
-    const response = await fetch(`${API_BASE}/council/save`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: councilId,
-        ...data // This ensures data is stored flat
-      })
-    });
-    
-    if (!response.ok) throw new Error("Cloud sync failed");
-    return await response.json(); 
+    const success = await councilApi.saveCouncilData(councilId, data);
+    if (success) {
+      // Clear the local aggregate cache so the dashboard refreshes with fresh data
+      localStorage.removeItem('cip_manager_all_data');
+      localStorage.removeItem('cip_manager_all_data_v2');
+      localStorage.removeItem('cip_manager_all_data_v3');
+      localStorage.removeItem('cip_manager_all_data_v4');
+      localStorage.removeItem('cip_manager_all_data_v5');
+    }
+    return { success };
   } catch (error) {
     console.error("Sync failed:", error);
     return { success: false };
@@ -34,23 +40,7 @@ export async function syncCouncilToCloud(councilId, data) {
 }
 
 export async function saveInitiative(councilId, initiative) {
-  const data = await getCouncilData(councilId);
-  if (!data) return;
-
-  const idx = data.initiatives.findIndex(i => i.id === initiative.id);
-  if (idx > -1) {
-    data.initiatives[idx] = initiative;
-  } else {
-    data.initiatives.push(initiative);
-    data.pendingList.push({
-      id: initiative.id,
-      title: initiative.title,
-      owner: initiative.lead?.name || 'Unknown',
-      status: 'pending',
-      submittedAt: new Date().toISOString(),
-    });
-  }
-  return await syncCouncilToCloud(councilId, data);
+  return await councilApi.saveInitiativeAPI({ councilId, ...initiative });
 }
 
 // ... other logic functions (reject, approve, etc.) should follow the same 
@@ -162,61 +152,70 @@ export async function clearAllCouncilData(councilId) {
   await councilApi.clearSingleCouncil(councilId);
 }
 // lib/dataStore.js
+import { COUNCILS_DATA } from './mockData';
+
 export async function getAllCouncilsData() {
+  const CACHE_KEY = 'cip_manager_all_data_v5';
+  [
+    'cip_manager_all_data',
+    'cip_manager_all_data_v2',
+    'cip_manager_all_data_v3',
+    'cip_manager_all_data_v4'
+  ].forEach(key => localStorage.removeItem(key));
+
+  const cached = localStorage.getItem(CACHE_KEY);
+  
+  let cachedParsed = null;
+  if (cached) {
+    try {
+      cachedParsed = JSON.parse(cached);
+    } catch (e) {
+      console.warn("Manager cache corrupt");
+    }
+  }
+
   try {
-    const response = await fetch(`${API_BASE}/councils/all`);
-    if (!response.ok) throw new Error("Failed to fetch all council data");
-    return await response.json();
+    const response = await fetch(`${API_BASE}/councils/full?cb=${Date.now()}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error("Failed to fetch aggregate data");
+    
+    const data = await response.json();
+    
+    // Save to local storage for instant next-load
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      timestamp: Date.now(),
+      data: data
+    }));
+
+    return data;
   } catch (error) {
     console.error("Error fetching global council data:", error);
-    return {}; // Return empty object so dashboard doesn't crash
+    // Fallback to cache if available even if stale
+    return cachedParsed ? cachedParsed.data : {}; 
   }
 }
-/**
- * A strict, performance-based Impact Score calculator.
- * Rewards successful execution, penalizes rejections and overdue tasks.
- */
-export function calculateImpactScore(baseScore, councilData) {
-  let score = baseScore || 0; // Start at 50 if no base provided
+export function calculateImpactScore(baseScore, data) {
+  const initiatives = data?.initiatives || [];
+  const approved = data?.approvedList || data?.approved || initiatives.filter(i => i.status === 'approved');
+  const successful = data?.successfulInitiatives || initiatives.filter(i => i.isSuccessful === true || i.isSuccessful === 1 || i.isSuccessful === '1');
+  const rejected = data?.rejectedList || data?.rejected || initiatives.filter(i => i.status === 'rejected');
+  const rawBase = Number(baseScore ?? data?.baseScore ?? data?.info?.baseScore ?? 0);
+  const base = Number.isFinite(rawBase) ? Math.min(50, Math.max(0, rawBase)) : 0;
 
-  const initiatives = councilData.initiatives || [];
-  const approved = councilData.approvedList || [];
-  const successful = councilData.successfulInitiatives || [];
-  const rejected = councilData.rejectedList || [];
+  const activity = Math.min(initiatives.length * 0.5, 10);
+  const approval = Math.min(approved.length * 1.0, 10);
+  const execution = Math.min(successful.length * 3.0, 30);
+  const rejectionPenalty = Math.min(rejected.length * 1.5, 15);
 
-  // 1. RAW ACTIVITY (Weight: 20%)
-  // Encourages proposing ideas. Max +10 points.
-  score += Math.min(initiatives.length * 0.5, 10);
-
-  // 2. APPROVAL QUALITY (Weight: 20%)
-  // High quality proposals that get approved. Max +10 points.
-  score += Math.min(approved.length * 1.0, 10);
-
-  // 3. SUCCESSFUL EXECUTION (The "Strict" Multiplier - Weight: 40%)
-  // Actually finishing what you started. Max +30 points.
-  score += Math.min(successful.length * 3.0, 30);
-
-  // 4. THE "STRICT" PENALTIES (Negative Impact)
-  // Penalize rejected proposals (poor planning).
-  score -= Math.min(rejected.length * 1.5, 15);
-
-  // 5. DEADLINE DISCIPLINE
-  // Penalize overdue initiatives (executionDate passed, but not marked success).
   const today = new Date().toISOString().split('T')[0];
-  const overdue = initiatives.filter(i => 
-    i.executionDate && 
-    i.executionDate < today && 
-    !i.isSuccessful
-  );
+  const overduePenalty = initiatives.filter(i =>
+    i.executionDate &&
+    i.executionDate < today &&
+    !(i.isSuccessful === true || i.isSuccessful === 1 || i.isSuccessful === '1')
+  ).length * 2;
 
-  // Deduct 2 points for every overdue initiative
-  score -= (overdue.length * 2);
+  const inactivityPenalty = initiatives.length === 0 ? 5 : 0;
+  const score = base + activity + approval + execution - rejectionPenalty - overduePenalty - inactivityPenalty;
 
-  // 6. INACTIVITY PENALTY
-  // If a council has 0 initiatives, they slowly drift towards 0.
-  if (initiatives.length === 0) score -= 5;
-
-  // Final Clamping: Score must be between 0 and 100
   return Math.min(100, Math.max(0, Math.round(score)));
 }
 /**
@@ -290,19 +289,8 @@ export async function hasExecutionDateConflict(councilId, date, excludeId = null
  */
 export async function saveCouncilInfo(councilId, info) {
   try {
-    // 1. Fetch current full state to ensure we don't overwrite initiatives
-    const currentState = await getCouncilData(councilId);
-    
-    // 2. Merge the new info into the existing state
-    const updatedData = {
-      ...currentState,
-      info: { ...currentState.info, ...info }
-    };
-
-    // 3. Sync the whole object back to the Worker
-    await syncCouncilToCloud(councilId, updatedData);
-    
-    return { success: true };
+    const success = await councilApi.saveCouncilData(councilId, { info });
+    return { success };
   } catch (error) {
     console.error("Failed to save council info:", error);
     return { success: false, error: error.message };
@@ -313,24 +301,7 @@ export async function saveCouncilInfo(councilId, info) {
  * This is used for feedback and oversight.
  */
 export async function addManagerComment(councilId, initiativeId, commentText) {
-  const data = await getCouncilData(councilId);
-  const idx = data.initiatives.findIndex(i => i.id === initiativeId);
-  
-  if (idx > -1) {
-    if (!data.initiatives[idx].managerComments) {
-      data.initiatives[idx].managerComments = [];
-    }
-
-    // Create the object
-    const newComment = {
-      text: commentText,
-      author: "Council Manager",
-      date: new Date().toISOString()
-    };
-
-    data.initiatives[idx].managerComments.push(newComment);
-    await syncCouncilToCloud(councilId, data);
-  }
+  return await councilApi.addCommentAPI({ councilId, initiativeId, comment: commentText });
 }
 /**
  * Moves an initiative from pending to approved.
@@ -344,77 +315,16 @@ export async function addManagerComment(councilId, initiativeId, commentText) {
  * Moves an initiative from pending to rejected.
  * Provides feedback to the President for revisions.
  */
-export async function deleteManagerComment(councilId, initiativeId, commentIndex) {
-  try {
-    const data = await getCouncilData(councilId);
-    const initiativeIdx = data.initiatives.findIndex(i => i.id === initiativeId);
 
-    if (initiativeIdx > -1) {
-      const initiative = data.initiatives[initiativeIdx];
-      
-      // Remove the comment at the specific index
-      if (initiative.managerComments) {
-        initiative.managerComments.splice(commentIndex, 1);
-        
-        await syncCouncilToCloud(councilId, data);
-        return { success: true };
-      }
-    }
-    return { success: false, error: "Comment not found" };
-  } catch (error) {
-    console.error("Delete comment failed:", error);
-    return { success: false, error: error.message };
-  }
-}
 /**
  * Permanently deletes an initiative and its metadata from the cloud.
  */
 export async function deleteInitiative(councilId, initiativeId) {
-  console.group("🚀 DELETION TRACE: " + initiativeId);
-  
   try {
-    const rawResult = await getCouncilData(councilId);
-    if (!rawResult) throw new Error("No council data found");
-
-    // --- STEP 1: THE UNWRAP ---
-    // We need to find where the actual initiatives live.
-    // Based on your trace, they are likely inside a nested 'data' string.
-    let parsedData = rawResult;
-    
-    // If 'data' is a string, we must parse it (possibly multiple times)
-    while (typeof parsedData.data === 'string') {
-      try {
-        parsedData = JSON.parse(parsedData.data);
-      } catch (e) {
-        break; // Stop if it's no longer valid JSON
-      }
-    }
-
-    // Now check if initiatives exist in this unwrapped version
-    console.log("Unwrapped Data:", parsedData);
-
-    // --- STEP 2: THE FILTER ---
-    const filterFn = (item) => String(item.id || item.initiativeId) !== String(initiativeId);
-
-    const updatedData = {
-      ...parsedData,
-      initiatives: (parsedData.initiatives || []).filter(filterFn),
-      pendingList: (parsedData.pendingList || []).filter(filterFn),
-      approvedList: (parsedData.approvedList || []).filter(filterFn),
-      calendarEvents: (parsedData.calendarEvents || []).filter(filterFn)
-    };
-
-    // --- STEP 3: THE SYNC (CLEANED) ---
-    // We send the CLEAN object, not the nested string mess
-    const response = await syncCouncilToCloud(councilId, updatedData);
-    
-    console.log("Clean Sync Response:", response);
-    console.groupEnd();
+    await councilApi.deleteInitiativeAPI({ councilId, initiativeId });
     return { success: true };
-
   } catch (error) {
-    console.error("💥 DELETION CRASH:", error);
-    console.groupEnd();
+    console.error("DELETION CRASH:", error);
     return { success: false, error: error.message };
   }
 }
@@ -436,39 +346,17 @@ export async function getCouncilInfo(councilId) {
  */
 export async function markInitiativeExecution(councilId, initiativeId, executedOnTime, successNote) {
   try {
-    // 1. Fetch latest data
     const data = await getCouncilData(councilId);
-    const initiatives = data.initiatives || [];
+    const initiative = data.initiatives?.find(i => i.id === initiativeId);
+    if (!initiative) return { success: false, error: "Initiative not found" };
 
-    // 2. Find and update the specific initiative
-    const idx = initiatives.findIndex(i => i.id === initiativeId);
-    if (idx === -1) return { success: false, error: "Initiative not found" };
-
-    initiatives[idx].executedOnTime = executedOnTime;
-    initiatives[idx].successNote = successNote || '';
-    
-    // If it was executed on time, it's officially a success
+    initiative.executedOnTime = executedOnTime;
+    initiative.successNote = successNote || '';
     if (executedOnTime) {
-      initiatives[idx].isSuccessful = true;
+      initiative.isSuccessful = true;
     }
 
-    // 3. Update the successfulInitiatives archive for the report
-    data.successfulInitiatives = data.successfulInitiatives || [];
-    const record = { 
-      ...initiatives[idx], 
-      archivedAt: new Date().toISOString() 
-    };
-    
-    const existingIdx = data.successfulInitiatives.findIndex(s => s.id === initiativeId);
-    if (existingIdx > -1) {
-      data.successfulInitiatives[existingIdx] = record;
-    } else {
-      data.successfulInitiatives.push(record);
-    }
-
-    // 4. Sync back to D1
-    await syncCouncilToCloud(councilId, data);
-    
+    await councilApi.saveInitiativeAPI({ councilId, ...initiative });
     return { success: true };
   } catch (error) {
     console.error("Failed to mark execution:", error);
@@ -482,33 +370,14 @@ export async function markInitiativeExecution(councilId, initiativeId, executedO
 export async function markInitiativeSuccessful(councilId, initiativeId, managerNote) {
   try {
     const data = await getCouncilData(councilId);
-    const initiatives = data.initiatives || [];
+    const initiative = data.initiatives?.find(i => i.id === initiativeId);
+    if (!initiative) return { success: false, error: "Initiative not found" };
 
-    const idx = initiatives.findIndex(i => i.id === initiativeId);
-    if (idx === -1) return { success: false, error: "Initiative not found" };
+    initiative.isSuccessful = true;
+    initiative.successVisible = true;
+    if (managerNote) initiative.successNote = managerNote;
 
-    // Update the initiative's internal status
-    initiatives[idx].isSuccessful = true;
-    initiatives[idx].successNote = managerNote || initiatives[idx].successNote || '';
-
-    // Add to the dedicated successful initiatives archive
-    data.successfulInitiatives = data.successfulInitiatives || [];
-    const record = { 
-      ...initiatives[idx], 
-      archivedAt: new Date().toISOString(), 
-      isSuccessVisible: true 
-    };
-
-    const existingIdx = data.successfulInitiatives.findIndex(s => s.id === initiativeId);
-    if (existingIdx > -1) {
-      data.successfulInitiatives[existingIdx] = record;
-    } else {
-      data.successfulInitiatives.push(record);
-    }
-
-    // Sync to Cloud
-    await syncCouncilToCloud(councilId, data);
-    
+    await councilApi.saveInitiativeAPI({ councilId, ...initiative });
     return { success: true };
   } catch (error) {
     console.error("Failed to mark initiative as successful:", error);
@@ -521,18 +390,13 @@ export async function markInitiativeSuccessful(councilId, initiativeId, managerN
 export async function toggleSuccessVisibility(councilId, initiativeId) {
   try {
     const data = await getCouncilData(councilId);
-    const successful = data.successfulInitiatives || [];
+    const initiative = data.initiatives?.find(i => i.id === initiativeId);
+    if (!initiative) return { success: false, error: "Initiative not found" };
 
-    const idx = successful.findIndex(s => s.id === initiativeId);
-    if (idx === -1) return { success: false, error: "Archived initiative not found" };
+    initiative.successVisible = !initiative.successVisible;
 
-    // Flip the visibility boolean
-    successful[idx].isSuccessVisible = !successful[idx].isSuccessVisible;
-
-    // Sync back to Cloud
-    await syncCouncilToCloud(councilId, data);
-    
-    return { success: true, newVisibility: successful[idx].isSuccessVisible };
+    await councilApi.saveInitiativeAPI({ councilId, ...initiative });
+    return { success: true, newVisibility: initiative.successVisible };
   } catch (error) {
     console.error("Failed to toggle visibility:", error);
     return { success: false, error: error.message };
@@ -540,23 +404,13 @@ export async function toggleSuccessVisibility(councilId, initiativeId) {
 }
 
   export async function saveMemberCredentials(councilId, credentials) {
-    // 1. Change endpoint to the working /council/save
-    const response = await fetch(`${API_BASE}/council/save`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      // 2. Change 'councilId' to 'id' so the Worker's SQL find the row
-      body: JSON.stringify({ 
-        id: councilId,
-        padlets: processed.padlets || councilId.padlets || {}, 
-        credentials 
-      })
-    });
-    
-    if (!response.ok) {
-      console.error("Save failed with status:", response.status);
+    try {
+      await councilApi.saveCredentialsAPI(councilId, credentials);
+      return true;
+    } catch (error) {
+      console.error("Save credentials error:", error);
+      return false;
     }
-    
-    return response.ok;
   }
 
 // Add this to your lib/dataStore.js
@@ -586,50 +440,17 @@ export async function wipeRemoteDatabase() {
 // lib/dataStore.js
 
 export async function wipeInitiativeCompletely(councilId, initiativeId) {
-  const response = await getCouncilData(councilId);
-  let data = response?.data && typeof response.data === 'string' ? JSON.parse(response.data) : response;
-
-  const targetId = String(initiativeId);
-
-  // 1. FILTER EVERYTHING
-  // This creates new arrays that are guaranteed NOT to have that ID
-  data.initiatives = (data.initiatives || []).filter(i => String(i.id) !== targetId);
-  data.pendingList = (data.pendingList || []).filter(i => String(i.id) !== targetId);
-  data.approvedList = (data.approvedList || []).filter(i => String(i.id) !== targetId);
-  data.rejectedList = (data.rejectedList || []).filter(i => String(i.id) !== targetId);
-
-  console.log(`Wiped ${targetId} from all lists. Saving...`);
-
-  // 2. SAVE the empty/cleaned state
-  return await councilApi.saveCouncilData(councilId, data);
-
+  try {
+    await councilApi.deleteInitiativeAPI({ councilId, initiativeId });
+    return { success: true };
+  } catch (error) {
+    console.error("Wipe completely failed", error);
+    return { success: false };
+  }
 }
 export async function approveInitiative(councilId, initiativeId, reviewData) {
   try {
-    const data = await getCouncilData(councilId);
-    if (!data) throw new Error("No council data found");
-
-    const initiative = data.initiatives?.find(i => i.id === initiativeId);
-    if (!initiative) throw new Error("Initiative not found");
-
-    // 1. Move to Approved List
-    data.approvedList = data.approvedList || [];
-    data.approvedList.push({
-      id: initiativeId,
-      title: initiative.title,
-      approvedAt: new Date().toISOString(),
-      ...reviewData
-    });
-
-    // 2. Remove from Pending List
-    data.pendingList = (data.pendingList || []).filter(p => p.id !== initiativeId);
-
-    // 3. Update the initiative status itself
-    const idx = data.initiatives.findIndex(i => i.id === initiativeId);
-    data.initiatives[idx].status = 'approved';
-
-    // 4. Sync back to Cloud
-    await syncCouncilToCloud(councilId, data);
+    await councilApi.approveInitiativeAPI({ councilId, initiativeId, reviewData });
     return { success: true };
   } catch (error) {
     console.error("Approval logic failed:", error);
@@ -639,59 +460,62 @@ export async function approveInitiative(councilId, initiativeId, reviewData) {
 export async function revertToPending(councilId, initiativeId) {
   try {
     const data = await getCouncilData(councilId);
-    if (!data) throw new Error("No council data found");
+    const initiative = data.initiatives?.find(i => i.id === initiativeId);
+    if (!initiative) throw new Error("Initiative not found");
 
-    // 1. Update the main initiative status
-    const idx = data.initiatives.findIndex(i => i.id === initiativeId);
-    if (idx === -1) throw new Error("Initiative not found");
-    
-    const initiative = data.initiatives[idx];
     initiative.status = 'pending';
-
-    // 2. Remove from Approved/Rejected lists
-    data.approvedList = (data.approvedList || []).filter(item => item.id !== initiativeId);
-    data.rejectedList = (data.rejectedList || []).filter(item => item.id !== initiativeId);
-
-    // 3. Ensure it's back in the Pending list
-    const isAlreadyInPending = data.pendingList?.some(p => p.id === initiativeId);
-    if (!isAlreadyInPending) {
-      data.pendingList = data.pendingList || [];
-      data.pendingList.push({
-        id: initiative.id,
-        title: initiative.title,
-        owner: initiative.lead?.name || 'Unknown',
-        status: 'pending',
-        submittedAt: new Date().toISOString()
-      });
-    }
-
-    await syncCouncilToCloud(councilId, data);
+    await councilApi.saveInitiativeAPI({ councilId, ...initiative });
+    
     return { success: true };
   } catch (error) {
     console.error("Revert failed:", error);
     return { success: false, error: error.message };
   }
 }
-export async function rejectInitiative(councilId, initiativeId) {
-  const data = await getCouncilData(councilId);
-  const idx = data.initiatives.findIndex(i => i.id === initiativeId);
-
-  if (idx > -1) {
-    // Update status
-    data.initiatives[idx].status = 'rejected';
-
-    // Move from pending to rejected list
-    const initiative = data.initiatives[idx];
-    data.rejectedList = data.rejectedList || [];
-    data.rejectedList.push({
-      id: initiativeId,
-      title: initiative.title,
-      rejectedAt: new Date().toISOString()
-    });
-
-    data.pendingList = (data.pendingList || []).filter(p => p.id !== initiativeId);
-
-    await syncCouncilToCloud(councilId, data);
+export async function rejectInitiative(councilId, initiativeId, reason) {
+  try {
+    await councilApi.rejectInitiativeAPI({ councilId, initiativeId, reason });
     return { success: true };
+  } catch (error) {
+    console.error("Reject failed:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteManagerComment(councilId, initiativeId, commentId) {
+  try {
+    await councilApi.deleteCommentAPI(commentId);
+    return { success: true };
+  } catch (error) {
+    console.error("Delete comment failed:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function saveStrategicAnalysis(councilId, analysis) {
+  try {
+    const response = await fetch(`${API_BASE}/council/analysis/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ councilId, ...analysis })
+    });
+    return response.ok;
+  } catch (err) {
+    console.error("Save analysis failed:", err);
+    return false;
+  }
+}
+
+export async function saveTimelineEvents(councilId, events) {
+  try {
+    const response = await fetch(`${API_BASE}/council/timeline/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ councilId, events })
+    });
+    return response.ok;
+  } catch (err) {
+    console.error("Save timeline failed:", err);
+    return false;
   }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Pencil, Check, X } from 'lucide-react';
 
 // Presidents can edit: mission, homepage, achievement, mainProject
@@ -7,13 +7,26 @@ export default function CouncilInfoEditor({ council, info, onSave, canEdit, isPr
   const [editing, setEditing] = useState(false);
 
   const [form, setForm] = useState({
-    mission: info.mission || council.mission || '',
-    homepage: info.homepage || council.homepage || '',
-    achievement: info.achievement || council.achievement || '',
-    mainProjectTitle: info.mainProjectTitle || council.mainProject?.title || '',
-    mainProjectProgress: info.mainProjectProgress ?? council.mainProject?.progress ?? 0,
-    mainProjectStatus: info.mainProjectStatus || council.mainProject?.status || 'In Progress',
+    mission: info.info?.mission || council.mission || '',
+    homepage: info.info?.homepage || council.homepage || '',
+    achievement: info.info?.achievement || council.achievement || '',
+    mainProjectTitle: info.mainProject?.title || council.mainProject?.title || '',
+    mainProjectProgress: info.mainProject?.progress ?? council.mainProject?.progress ?? 0,
+    mainProjectStatus: info.mainProject?.status || council.mainProject?.status || 'In Progress',
   });
+
+  useEffect(() => {
+    if (!editing) {
+      setForm({
+        mission: info.info?.mission || council.mission || '',
+        homepage: info.info?.homepage || council.homepage || '',
+        achievement: info.info?.achievement || council.achievement || '',
+        mainProjectTitle: info.mainProject?.title || council.mainProject?.title || '',
+        mainProjectProgress: info.mainProject?.progress ?? council.mainProject?.progress ?? 0,
+        mainProjectStatus: info.mainProject?.status || council.mainProject?.status || 'In Progress',
+      });
+    }
+  }, [info, council, editing]);
 
   function handleSave() {
     onSave(form);
@@ -21,12 +34,12 @@ export default function CouncilInfoEditor({ council, info, onSave, canEdit, isPr
   }
 
   const display = {
-    mission: info.mission || council.mission,
-    homepage: info.homepage || council.homepage,
-    achievement: info.achievement || council.achievement,
-    mainProjectTitle: info.mainProjectTitle || council.mainProject?.title,
-    mainProjectProgress: info.mainProjectProgress ?? council.mainProject?.progress ?? 0,
-    mainProjectStatus: info.mainProjectStatus || council.mainProject?.status,
+    mission: info.info?.mission || council.mission,
+    homepage: info.info?.homepage || council.homepage,
+    achievement: info.info?.achievement || council.achievement,
+    mainProjectTitle: info.mainProject?.title || council.mainProject?.title,
+    mainProjectProgress: info.mainProject?.progress ?? council.mainProject?.progress ?? 0,
+    mainProjectStatus: info.mainProject?.status || council.mainProject?.status,
   };
 
   return (

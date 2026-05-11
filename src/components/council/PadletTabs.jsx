@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MessageSquare, User, Trophy, Settings } from 'lucide-react';
+import { API_BASE } from '../../api/councilApi';
 
 const TABS = [
   { id: 'internal', label: 'Internal Comms', icon: <MessageSquare size={12} />, desc: 'Council communication drafts — visible to all council members.' },
@@ -59,7 +60,7 @@ export default function PadletTabs({ council, canManagePadlets, onPadletsUpdated
     console.log("[Padlet Debug] Attempting Save with Payload:", { id: council.id, padlets: urls });
     
     try {
-      const res = await fetch('https://councilhub-backend.oois-cip-official.workers.dev/api/council/save', {
+      const res = await fetch(`${API_BASE}/council/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

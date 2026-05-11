@@ -351,7 +351,7 @@ export default function InitiativeDetail({
       )}
 
      
-      {initiative.managerComments.map((item, idx) => {
+      {(initiative.managerComments || []).map((item, idx) => {
             const commentData = item.text || {}; 
             const displayAuthor = commentData.author || item.author || "Manager";
             const displayText = typeof commentData === 'string' ? commentData : (commentData.text || "");
@@ -362,7 +362,7 @@ export default function InitiativeDetail({
                 {/* DELETE BUTTON - Only shows for managers */}
                 {isManager && (
                   <button
-                    onClick={() => onDeleteComment(initiative.id, idx)}
+                    onClick={() => onDeleteComment(initiative.id, item.id)}
                     className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-red-600 transition-opacity"
                     title="Delete comment"
                   >

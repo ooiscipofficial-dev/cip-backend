@@ -61,6 +61,12 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
     });
   }
 }, [initial]); // This triggers every time you click a different 'Edit' button
+
+  useEffect(() => {
+    if (form.executionDate) {
+      handleDateChange(form.executionDate);
+    }
+  }, []);
   async function handleDateChange(date) { // 1. Added async
     setField('executionDate', date);
     
@@ -130,7 +136,7 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
   return (
     <div className="border border-border rounded-2xl bg-card p-6 shadow-sm">
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-base font-semibold">{initial ? 'Edit Initiative' : 'New Initiative'}</h2>
+        <h2 className="text-base font-semibold">{initial?.id ? 'Edit Initiative' : 'New Initiative'}</h2>
         <button onClick={onCancel} className="text-muted-foreground hover:text-foreground transition-colors"><X size={16} /></button>
       </div>
 
@@ -299,7 +305,7 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
           </button>
           <button type="submit" disabled={dateConflict}
             className="flex-1 px-4 py-2 text-sm font-medium bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
-            {initial ? 'Update Initiative' : 'Create Initiative'}
+            {initial?.id ? 'Update Initiative' : 'Create Initiative'}
           </button>
         </div>
       </form>

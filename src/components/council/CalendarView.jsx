@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Plus } from 'lucide-react';
 
 const EVENT_COLORS = {
   Continuous: 'bg-blue-100 text-blue-700 border-blue-200',
@@ -8,7 +8,7 @@ const EVENT_COLORS = {
   default: 'bg-blue-500 text-secondary-foreground border-input',
 };
 
-export default function CalendarView({ events = [] }) {
+export default function CalendarView({ events = [], onAddInitiative, onEventClick }) {
   const today = new Date();
   const [current, setCurrent] = useState({ year: today.getFullYear(), month: today.getMonth() });
 
@@ -70,13 +70,27 @@ export default function CalendarView({ events = [] }) {
           return (
             <div
               key={day}
-              className={`min-h-[60px] rounded-lg border p-1 ${
+              className={`group min-h-[60px] rounded-lg border p-1 relative ${
                 isToday ? 'border-foreground bg-muted/50' : 'border-border'
               }`}
             >
-              <p className={`text-xs font-medium mb-0.5 ${isToday ? 'text-foreground' : 'text-muted-foreground'}`}>
-                {day}
-              </p>
+              <div className="flex justify-between items-center mb-0.5">
+                <p className={`text-xs font-medium ${isToday ? 'text-foreground' : 'text-muted-foreground'}`}>
+                  {day}
+                </p>
+                {onAddInitiative && (
+                  <button 
+                    onClick={() => {
+                      const dateStr = `${current.year}-${String(current.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                      onAddInitiative(dateStr);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 text-muted-foreground hover:text-foreground transition-opacity"
+                    title="Add initiative on this date"
+                  >
+                    <Plus size={10} />
+                  </button>
+                )}
+              </div>
               <div className="space-y-0.5">
                 {dayEvents.slice(0, 2).map((ev, idx) => {
                   // Normalize the type to handle case sensitivity (e.g., 'continuous' -> 'Continuous')
@@ -86,9 +100,11 @@ export default function CalendarView({ events = [] }) {
                   return (
                     <div
                       key={idx}
-                      className={`text-[10px] px-1 py-0.5 rounded border truncate ${colorClass}`}
-                      title={ev.title}
+                      onClick={() => onEventClick && onEventClick(ev.id)}
+                      className={`text-[10px] px-1 py-0.5 rounded border truncate ${onEventClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''} ${colorClass}`}
+                      title={`${ev.councilName ? `[${ev.councilName}] ` : ''}${ev.title}`}
                     >
+                      {ev.councilName ? <span className="font-bold opacity-70 mr-1">{ev.councilName.split(' ')[0]}</span> : null}
                       {ev.title}
                     </div>
                   );
@@ -108,7 +124,10 @@ export default function CalendarView({ events = [] }) {
           <p className="text-xs font-medium text-muted-foreground mb-2">Events this month</p>
           <div className="space-y-1.5">
             {monthEvents.sort((a, b) => a.date.localeCompare(b.date)).map((ev, i) => (
-              <div key={i} className="flex items-start gap-3 text-xs border border-border rounded-lg p-2 bg-background">
+              <div key={i} 
+                onClick={() => onEventClick && onEventClick(ev.id)}
+                className={`flex items-start gap-3 text-xs border border-border rounded-lg p-2 bg-background ${onEventClick ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+              >
                 <Calendar size={12} className="text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-medium">{ev.title}</p>

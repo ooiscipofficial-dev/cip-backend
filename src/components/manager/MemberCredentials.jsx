@@ -10,7 +10,8 @@ export default function MemberCredentials({ storeData, onClose, onRefresh }) {
     // Inside MemberCredentials.jsx
   useEffect(() => {
     if (selectedId && storeData[selectedId]) {
-      setCreds(storeData[selectedId].credentials || { username: '', password: '' });
+      const existing = storeData[selectedId].credentials;
+      setCreds(existing && Object.keys(existing).length > 0 ? existing : loadCreds(selectedId));
     }
   }, [selectedId, storeData]);
   function loadCreds(id) {
@@ -30,8 +31,16 @@ export default function MemberCredentials({ storeData, onClose, onRefresh }) {
   function addMember() { setCreds(c => ({ ...c, [`member_${Date.now()}`]: { username: '', password: '', name: '', role: 'Council Junior' } })); }
   function remove(key) { setCreds(c => { const n = {...c}; delete n[key]; return n; }); }
   async function save() {
+    // Filter out empty credentials to prevent DB UNIQUE constraint errors
+    const validCreds = {};
+    for (const [key, val] of Object.entries(creds)) {
+      if (val.username && val.username.trim() !== '') {
+        validCreds[key] = val;
+      }
+    }
+
     // 1. Send to backend
-    const success = await saveMemberCredentials(selectedId, creds);
+    const success = await saveMemberCredentials(selectedId, validCreds);
     
     if (success) {
       // 2. Update local state if needed
@@ -102,7 +111,7 @@ export default function MemberCredentials({ storeData, onClose, onRefresh }) {
                     <div className="px-3 pb-3 pt-2 border-t border-border bg-muted/10 grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs font-medium text-muted-foreground">Full Name</label>
-                        <input value={m.name} onChange={e => update(key,'name',e.target.value)} placeholder="Full name"
+                        <input value={m.name || ''} onChange={e => update(key,'name',e.target.value)} placeholder="Full name"
                           className="w-full mt-1 px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                       </div>
                       <div>
@@ -114,13 +123,13 @@ export default function MemberCredentials({ storeData, onClose, onRefresh }) {
                       </div>
                       <div>
                         <label className="text-xs font-medium text-muted-foreground">Username</label>
-                        <input value={m.username} onChange={e => update(key,'username',e.target.value)} placeholder="e.g. john.doe"
+                        <input value={m.username || ''} onChange={e => update(key,'username',e.target.value)} placeholder="e.g. john.doe"
                           className="w-full mt-1 px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                       </div>
                       <div>
                         <label className="text-xs font-medium text-muted-foreground">Password</label>
                         <div className="relative mt-1">
-                          <input type={showPwd[key] ? 'text' : 'password'} value={m.password}
+                          <input type={showPwd[key] ? 'text' : 'password'} value={m.password || ''}
                             onChange={e => update(key,'password',e.target.value)} placeholder="Set password"
                             className="w-full pr-8 px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
                           <button type="button" onClick={() => setShowPwd(s => ({...s,[key]:!s[key]}))}

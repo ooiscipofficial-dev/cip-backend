@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { clearSession } from '../../lib/authStore';
-import { LogOut, LayoutGrid, Globe, Crown, Files } from 'lucide-react';
+import { LogOut, LayoutGrid, Globe, Crown, Files, Calendar } from 'lucide-react';
 import ThemeToggle from '../../components/layout/ThemeToggle';
 
 export default function Navbar({ session }) {
@@ -28,6 +28,7 @@ export default function Navbar({ session }) {
           {isManager && (
             <>
               <NavLink to="/manager" label="Overview" current={location.pathname} icon={<LayoutGrid size={12} />} />
+              <NavLink to="/calendar" label="Execution Calendar" current={location.pathname} icon={<Calendar size={12} />} />
               <NavLink to="/commons" label="Commons" current={location.pathname} icon={<Globe size={12} />} />
               <NavLink to="/files" label="File Wall" current={location.pathname} icon={<Files size={12} />} />
             </>
@@ -35,6 +36,7 @@ export default function Navbar({ session }) {
           {session?.type === 'member' && (
             <>
               <NavLink to={`/council/${session.councilId}`} label="My Council" current={location.pathname} icon={<LayoutGrid size={12} />} />
+              <NavLink to="/calendar" label="Execution Calendar" current={location.pathname} icon={<Calendar size={12} />} />
               <NavLink to="/commons" label="Commons" current={location.pathname} icon={<Globe size={12} />} />
               <NavLink to="/files" label="File Wall" current={location.pathname} icon={<Files size={12} />} />
             </>

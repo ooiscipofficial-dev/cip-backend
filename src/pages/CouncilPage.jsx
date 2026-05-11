@@ -18,11 +18,13 @@ import { COUNCILS_DATA } from '../lib/mockData';
 import {
   getCouncilData, saveInitiative, deleteInitiative, getCouncilInfo, saveCouncilInfo,
   wipeInitiativeCompletely, rejectInitiative, markInitiativeSuccessful, toggleSuccessVisibility,
-  addManagerComment, calculateImpactScore, markInitiativeExecution, approveInitiative, revertToPending, deleteManagerComment
+  addManagerComment, calculateImpactScore, markInitiativeExecution, approveInitiative, revertToPending, deleteManagerComment, getAllCouncilsData
 } from '../lib/dataStore';
 import onSave from '../components/council/InitiativeForm'; // Import the onSave function
 import { isPresident as checkPresident, isManager as checkManager } from '../lib/authStore';
-import { LayoutGrid, Calendar, Settings, Plus, Layout, HardDrive } from 'lucide-react';
+import { LayoutGrid, Calendar, Settings, Plus, Layout, HardDrive, Globe, TrendingUp } from 'lucide-react';
+import CommonsView from '../components/council/CommonsView';
+import StrategicManager from '../components/council/StrategicManager';
 
 export default function CouncilPage({ session }) {
   const { councilId } = useParams();
@@ -32,6 +34,7 @@ export default function CouncilPage({ session }) {
   const [councilData, setCouncilData] = useState({ 
     initiatives: [], pendingList: [], approvedList: [], rejectedList: [] 
   });
+  const [allStoreData, setAllStoreData] = useState({});
   const [councilInfo, setCouncilInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -50,6 +53,9 @@ export default function CouncilPage({ session }) {
 
         setCouncilData(data);
         setCouncilInfo(data);
+
+        const all = await getAllCouncilsData();
+        setAllStoreData(all);
       }
     } catch (err) {
       console.error("Refresh failed:", err);
@@ -289,7 +295,7 @@ export default function CouncilPage({ session }) {
     </div>
   );
 
-  const impactScore = calculateImpactScore(council.impactScore, councilData);
+  const impactScore = calculateImpactScore(councilData.info?.baseScore, councilData);
   const info = { ...council, ...councilInfo };
 
   // Merge padlets: store overrides static
@@ -320,7 +326,7 @@ export default function CouncilPage({ session }) {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
-              Score: {impactScore}
+              Impact Score: {impactScore}
             </span>
             {!showForm && !selectedInitiative && tab === 'initiatives' && (
               <button
@@ -340,12 +346,18 @@ export default function CouncilPage({ session }) {
           <TabBtn id="padlet" active={tab} setTab={setTab} icon={<Layout size={12} />} label="Padlet" />
           <TabBtn id="drive" active={tab} setTab={setTab} icon={<HardDrive size={12} />} label="Drive" />
           <TabBtn id="info" active={tab} setTab={setTab} icon={<Settings size={12} />} label="Info" />
+          <TabBtn id="strategy" active={tab} setTab={setTab} icon={<TrendingUp size={12} />} label="Strategy" />
         </div>
 
         {tab === 'initiatives' && (
           <>
             {showForm ? (
-              <InitiativeForm onSave={handleSaveInitiative} onCancel={() => {setShowForm(false);setEditingInitiative(null);}} />
+              <InitiativeForm 
+                initial={editingInitiative} 
+                councilId={councilId} 
+                onSave={handleSaveInitiative} 
+                onCancel={() => {setShowForm(false);setEditingInitiative(null);}} 
+              />
             ) : selectedInitiative ? (
               <InitiativeDetail 
                 onRevert={handleRevert}
@@ -395,6 +407,20 @@ export default function CouncilPage({ session }) {
               // Pass the raw type; we will handle capitalization in the component
               type: ini.type 
             }))} 
+            onAddInitiative={(dateStr) => {
+              if (!canEdit) return;
+              setEditingInitiative({ executionDate: dateStr });
+              setShowForm(true);
+              setTab('initiatives'); // optional: switch to initiatives tab to see the form
+            }}
+            onEventClick={(eventId) => {
+              // Open the initiative detail view
+              const initiative = (councilData.initiatives || []).find(i => i.id === eventId);
+              if (initiative) {
+                setSelectedInitiative(initiative);
+                setTab('initiatives'); // Switch to initiatives tab to see details
+              }
+            }}
           />
         )}
 
@@ -413,6 +439,7 @@ export default function CouncilPage({ session }) {
           <DriveSection councilId={councilId} councilName={council.name} session={session} />
         )}
 
+        {/* Commons tab */}
         {/* Info tab */}
         {tab === 'info' && (
           <CouncilInfoEditor
@@ -422,6 +449,14 @@ export default function CouncilPage({ session }) {
             canEdit={canEdit}
             isPresident={isPresidentUser}
             isManager={managerView}
+          />
+        )}
+
+        {tab === 'strategy' && (
+          <StrategicManager 
+            councilId={councilId} 
+            data={councilData} 
+            onRefresh={refresh} 
           />
         )}
       </div>

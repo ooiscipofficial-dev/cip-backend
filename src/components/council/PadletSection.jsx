@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE } from '../../api/councilApi';
 
 const PADLET_TABS = [
   { key: 'internal1', label: 'Internal Comms', desc: 'Council communication and coordination' },
@@ -19,7 +20,7 @@ export default function PadletSection({ council, isManager }) {
     async function fetchPadlets() {
       try {
         setLoading(true);
-        const res = await fetch(`/api/councils/${council.id}/padlets`);
+        const res = await fetch(`${API_BASE}/councils/${council.id}/padlets`);
         if (!res.ok) throw new Error('Failed to load padlets');
         const data = await res.json();
         setPadlets(data.padlets || {});
@@ -45,7 +46,7 @@ export default function PadletSection({ council, isManager }) {
       // 1. OPTIMISTIC UPDATE: Update local state immediately
       setPadlets(updatedPadlets);
       
-      const res = await fetch(`/api/councils/${council.id}/padlets`, {
+      const res = await fetch(`${API_BASE}/councils/${council.id}/padlets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ padlets: updatedPadlets })

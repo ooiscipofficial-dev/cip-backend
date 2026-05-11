@@ -1,10 +1,26 @@
+import { useState, useEffect } from 'react';
 import Navbar from '../components/layout/Navbar';
-import { GLOBAL_PADLET } from '../lib/mockData';
+import { getSystemSettings } from '../lib/dataStore';
 import { Globe } from 'lucide-react';
 
-const hasBoard = GLOBAL_PADLET && GLOBAL_PADLET !== "";
-
 export default function Commons({ session }) {
+  const [url, setUrl] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const settings = await getSystemSettings();
+        setUrl(settings.commonsPadlet || '');
+      } catch (err) {
+        console.error("Failed to load commons:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar session={session} />
@@ -15,23 +31,29 @@ export default function Commons({ session }) {
           <span className="text-xs text-muted-foreground">· Cross-council collaboration</span>
         </div>
 
-        {hasBoard ? (
-          <iframe
-            src={GLOBAL_PADLET}
-            className="w-full rounded-2xl border border-border"
-            style={{ height: '75vh' }}
-            title="Global Padlet Board"
-          />
-        ) : (
-          <div className="border border-dashed border-border rounded-2xl p-12 text-center">
-            <Globe size={32} className="text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm font-medium mb-1">No Commons board configured</p>
-            <p className="text-xs text-muted-foreground">
-              Set the <code className="font-mono bg-muted px-1 rounded">GLOBAL_PADLET</code> URL in{' '}
-              <code className="font-mono bg-muted px-1 rounded">lib/mockData.js</code> to embed the shared board.
-            </p>
-          </div>
-        )}
+        <div className="border border-border rounded-2xl overflow-hidden bg-card" style={{ height: '75vh' }}>
+          {loading ? (
+            <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">Loading...</div>
+          ) : !url ? (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-center p-8 bg-muted/30">
+               <Globe size={32} className="text-muted-foreground/30" />
+               <p className="text-sm font-medium text-foreground">Commons Board Not Linked</p>
+               <p className="text-xs text-muted-foreground max-w-xs">
+                 The global commons board has not been configured by a manager yet.
+               </p>
+            </div>
+          ) : (
+            <div className="padlet-embed" style={{ width: '100%', height: '100%' }}>
+              <iframe 
+                src={url} 
+                frameBorder="0" 
+                allow="camera;microphone;geolocation;display-capture;clipboard-write" 
+                style={{ width: '100%', height: '100%', padding: 0, margin: 0 }}
+                title="Commons Padlet"
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

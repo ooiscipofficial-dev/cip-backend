@@ -5,6 +5,7 @@ import ManagerDashboard from '../src/pages/ManagerDashboard';
 import CouncilPage from '../src/pages/CouncilPage';
 import Commons from '../src/pages/Commons';
 import CommonFileWall from '../src/pages/CommonFileWall';
+import GlobalCalendarPage from '../src/pages/GlobalCalendarPage';
 import { getTheme } from '../src/lib/dataStore';
 
 if (getTheme() === 'dark') document.documentElement.classList.add('dark');
@@ -62,6 +63,13 @@ function App() {
         <Route path="/files" element={
           <RequireAuth allowedTypes={['member', 'manager']}>
             {(session) => <CommonFileWall session={session} />}
+          </RequireAuth>
+        } />
+
+        {/* Global Calendar */}
+        <Route path="/calendar" element={
+          <RequireAuth allowedTypes={['member', 'manager']}>
+            {(session) => <GlobalCalendarPage session={session} />}
           </RequireAuth>
         } />
 

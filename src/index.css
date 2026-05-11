@@ -136,3 +136,6 @@ html { transition: color-scheme 0.2s; }
 
 /* Tag badge */
 .tag { @apply text-xs font-medium px-2 py-0.5 rounded bg-muted text-muted-foreground; }
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
