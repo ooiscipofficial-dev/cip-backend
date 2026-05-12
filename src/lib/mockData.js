@@ -13,10 +13,10 @@ export const COUNCILS_DATA = [
   { id:"environment-council",      name:"Environment Council",        color:"#16a34a", googleEmail:"oois.environment@gmail.com" },
   { id:"sports-council",           name:"Sports Council",             color:"#f97316", googleEmail:"oois.sports@gmail.com" },
   { id:"cultural-council",         name:"Cultural Council",           color:"#c026d3", googleEmail:"oois.cultural@gmail.com" },
-  { id:"aries-house",              name:"Aries House",                color:"#f43f5e", type:"house", googleEmail:"oois.aries@gmail.com" },
-  { id:"aquarius-house",           name:"Aquarius House",             color:"#0ea5e9", type:"house", googleEmail:"oois.aquarius@gmail.com" },
-  { id:"leo-house",                name:"Leo House",                  color:"#eab308", type:"house", googleEmail:"oois.leo@gmail.com" },
-  { id:"taurus-house",             name:"Taurus House",               color:"#84cc16", type:"house", googleEmail:"oois.taurus@gmail.com" },
+  { id:"aries-house",              name:"Aries House",                color:"#f43f5e", type:"house", googleEmail:"oois.aries.house@gmail.com" },
+  { id:"aquarius-house",           name:"Aquarius House",             color:"#0ea5e9", type:"house", googleEmail:"oois.aquarius.house@gmail.com" },
+  { id:"leo-house",                name:"Leo House",                  color:"#eab308", type:"house", googleEmail:"oois.leo.house@gmail.com" },
+  { id:"taurus-house",             name:"Taurus House",               color:"#84cc16", type:"house", googleEmail:"oois.taurus.house@gmail.com" },
 ];
 
 export const MEMBER_ROLES = ["President", "Secretary", "Deputy Secretary", "Council Junior"];

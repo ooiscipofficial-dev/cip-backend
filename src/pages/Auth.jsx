@@ -1,71 +1,62 @@
 import { useState } from 'react';
 import { COUNCILS_DATA } from '../lib/mockData';
-import { resolveGoogleEmail, simulateGoogleLogin, memberLogin, managerLogin, setSession } from '../lib/authStore';
+import { memberLogin, managerLogin, setSession } from '../lib/authStore';
 import ThemeToggle from '../components/layout/ThemeToggle';
-import { Loader2, ChevronRight, Shield, Mail } from 'lucide-react';
+import { Loader2, ChevronRight, Shield } from 'lucide-react';
 
 export default function Auth() {
-  const [step,             setStep]            = useState('select');
+  const [step, setStep] = useState('select');
   const [selectedCouncil, setSelectedCouncil] = useState(null);
-  const [googleLoading,   setGoogleLoading]   = useState(false);
-  const [googleEmail,     setGoogleEmail]     = useState('');
-  const [form,            setForm]            = useState({ username: '', password: '' });
-  const [loading,         setLoading]         = useState(false);
-  const [error,           setError]           = useState('');
+  const [form, setForm] = useState({ username: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const studentCouncils = COUNCILS_DATA.filter(c => !c.type);
-  const houseCouncils   = COUNCILS_DATA.filter(c => c.type === 'house');
+  const houseCouncils = COUNCILS_DATA.filter(c => c.type === 'house');
 
   function handleCouncilTileClick(council) {
     setSelectedCouncil(council);
     setError('');
-    setGoogleEmail('');
-    setStep('google');
-  }
-
-  async function handleGoogleSignIn(e) {
-    e.preventDefault();
-    setGoogleLoading(true); setError('');
-    const emailToUse = googleEmail.trim() || selectedCouncil?.googleEmail || '';
-    if (emailToUse) {
-      const result = resolveGoogleEmail(emailToUse);
-      if (!result.success) {
-        setGoogleLoading(false);
-        setError(result.error);
-        return;
-      }
-      const council = COUNCILS_DATA.find(c => c.id === result.councilId);
-      if (council) setSelectedCouncil(council);
-    }
-    await simulateGoogleLogin(selectedCouncil?.id);
-    setGoogleLoading(false);
+    setForm({ username: '', password: '' });
     setStep('member');
   }
 
   async function handleMemberLogin(e) {
     e.preventDefault();
-    setLoading(true); setError('');
+    setLoading(true);
+    setError('');
+
     const res = await memberLogin(form.username, form.password, selectedCouncil.id);
+
     setLoading(false);
-    if (res.success) { setSession(res.session); window.location.href = `/council/${selectedCouncil.id}`; }
-    else setError(res.error);
+    if (res.success) {
+      setSession(res.session);
+      window.location.href = `/council/${selectedCouncil.id}`;
+    } else {
+      setError(res.error);
+    }
   }
 
   async function handleManagerLogin(e) {
     e.preventDefault();
-    setLoading(true); setError('');
+    setLoading(true);
+    setError('');
+
     const res = await managerLogin(form.username, form.password);
+
     setLoading(false);
-    if (res.success) { setSession(res.session); window.location.href = '/manager'; }
-    else setError(res.error);
+    if (res.success) {
+      setSession(res.session);
+      window.location.href = '/manager';
+    } else {
+      setError(res.error);
+    }
   }
 
   return (
     <div className="min-h-screen bg-background auth-glow grid-bg flex flex-col items-center justify-center p-4">
       <div className="absolute top-4 right-4"><ThemeToggle /></div>
       <div className="w-full max-w-sm">
-
-        {/* Logo */}
         <div className="flex items-center gap-2 justify-center mb-10">
           <div className="w-7 h-7 rounded-lg bg-foreground flex items-center justify-center">
             <div className="w-3.5 h-3.5 rounded bg-background" />
@@ -73,7 +64,6 @@ export default function Auth() {
           <span className="text-lg font-semibold tracking-tight">CouncilHub</span>
         </div>
 
-        {/* STEP 1: Select council */}
         {step === 'select' && (
           <div>
             <h1 className="text-xl font-semibold text-center mb-1">Sign in to your council</h1>
@@ -89,69 +79,48 @@ export default function Auth() {
               ))}
             </div>
             <div className="mt-6 pt-5 border-t border-border">
-              <button onClick={() => { setStep('manager'); setError(''); setForm({ username: '', password: '' }); }}
-                className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <button
+                onClick={() => { setStep('manager'); setError(''); setForm({ username: '', password: '' }); }}
+                className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
                 <Shield size={13} /> Manager access
               </button>
             </div>
           </div>
         )}
 
-        {/* STEP 2: Google verification */}
-        {step === 'google' && (
-          <div>
-            <CouncilBadge council={selectedCouncil} />
-            <h1 className="text-xl font-semibold mb-1">Verify with Google</h1>
-            <p className="text-sm text-muted-foreground mb-5">Sign in with your council Google account.</p>
-
-            <form onSubmit={handleGoogleSignIn} className="space-y-3">
-              <div className="border border-dashed border-border rounded-xl p-3 text-xs text-muted-foreground text-center mb-2">
-                <p className="font-medium text-foreground mb-1">Google Sign-In · Placeholder</p>
-                <p>Enter council email or leave blank to continue in demo mode.</p>
-                <p className="mt-1 opacity-60">Expected: <code className="bg-muted px-1 rounded">{selectedCouncil?.googleEmail}</code></p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1.5">Council Google Email (optional)</label>
-                <div className="relative">
-                  <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <input type="email" value={googleEmail} onChange={e => setGoogleEmail(e.target.value)}
-                    placeholder={selectedCouncil?.googleEmail}
-                    className="w-full pl-8 pr-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
-                </div>
-              </div>
-              {error && <p className="text-xs text-red-500">{error}</p>}
-              <button type="submit" disabled={googleLoading}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-foreground text-background text-sm font-medium rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60">
-                {googleLoading
-                  ? <><Loader2 size={14} className="animate-spin" /> Verifying...</>
-                  : 'Continue with Google'}
-              </button>
-            </form>
-            <button onClick={() => { setStep('select'); setError(''); }}
-              className="mt-4 text-xs text-muted-foreground hover:text-foreground block mx-auto">← Back</button>
-          </div>
-        )}
-
-        {/* STEP 3: Member credentials */}
         {step === 'member' && (
           <div>
-            <CouncilBadge council={selectedCouncil} sub="Google verified" />
+            <CouncilBadge council={selectedCouncil} />
             <h1 className="text-xl font-semibold mb-1">Member sign-in</h1>
             <p className="text-sm text-muted-foreground mb-5">Use the credentials set by your manager.</p>
             <form onSubmit={handleMemberLogin} className="space-y-3">
-              <FormField label="Username" type="text" value={form.username} placeholder="e.g. president.aarav"
-                onChange={e => setForm(f => ({ ...f, username: e.target.value }))} />
-              <FormField label="Password" type="password" value={form.password} placeholder="••••••••"
-                onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+              <FormField
+                label="Username"
+                type="text"
+                value={form.username}
+                placeholder="e.g. president.aarav"
+                onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+              />
+              <FormField
+                label="Password"
+                type="password"
+                value={form.password}
+                placeholder="Password"
+                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              />
               {error && <p className="text-xs text-red-500">{error}</p>}
               <SubmitButton loading={loading}>Sign in</SubmitButton>
             </form>
-            <button onClick={() => { setStep('google'); setError(''); }}
-              className="mt-4 text-xs text-muted-foreground hover:text-foreground block mx-auto">← Back</button>
+            <button
+              onClick={() => { setStep('select'); setError(''); }}
+              className="mt-4 text-xs text-muted-foreground hover:text-foreground block mx-auto"
+            >
+              Back
+            </button>
           </div>
         )}
 
-        {/* Manager login */}
         {step === 'manager' && (
           <div>
             <div className="flex items-center gap-2 mb-6">
@@ -159,22 +128,38 @@ export default function Auth() {
                 <Shield size={14} className="text-background" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Manager access · 9 councils + 4 houses</p>
+                <p className="text-xs text-muted-foreground">Manager access - 9 councils + 4 houses</p>
                 <p className="text-sm font-semibold">Full system control</p>
               </div>
             </div>
             <h1 className="text-xl font-semibold mb-1">Manager sign-in</h1>
-            <p className="text-sm text-muted-foreground mb-5">Credentials configured in <code className="bg-muted px-1 rounded text-xs">lib/authStore.js</code></p>
+            <p className="text-sm text-muted-foreground mb-5">
+              Credentials configured in <code className="bg-muted px-1 rounded text-xs">lib/authStore.js</code>
+            </p>
             <form onSubmit={handleManagerLogin} className="space-y-3">
-              <FormField label="Username" type="text" value={form.username} placeholder="manager"
-                onChange={e => setForm(f => ({ ...f, username: e.target.value }))} />
-              <FormField label="Password" type="password" value={form.password} placeholder="••••••••"
-                onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+              <FormField
+                label="Username"
+                type="text"
+                value={form.username}
+                placeholder="manager"
+                onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+              />
+              <FormField
+                label="Password"
+                type="password"
+                value={form.password}
+                placeholder="Password"
+                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              />
               {error && <p className="text-xs text-red-500">{error}</p>}
               <SubmitButton loading={loading}>Sign in as Manager</SubmitButton>
             </form>
-            <button onClick={() => { setStep('select'); setError(''); }}
-              className="mt-4 text-xs text-muted-foreground hover:text-foreground block mx-auto">← Back</button>
+            <button
+              onClick={() => { setStep('select'); setError(''); }}
+              className="mt-4 text-xs text-muted-foreground hover:text-foreground block mx-auto"
+            >
+              Back
+            </button>
           </div>
         )}
       </div>
@@ -184,24 +169,34 @@ export default function Auth() {
 
 function CouncilButton({ council, onClick }) {
   return (
-    <button onClick={onClick}
-      className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg border border-border bg-card hover:bg-muted transition-colors text-left group">
-      <div className="w-7 h-7 rounded-md flex-shrink-0 flex items-center justify-center text-white text-xs font-bold"
-        style={{ backgroundColor: council.color }}>{council.name[0]}</div>
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg border border-border bg-card hover:bg-muted transition-colors text-left group"
+    >
+      <div
+        className="w-7 h-7 rounded-md flex-shrink-0 flex items-center justify-center text-white text-xs font-bold"
+        style={{ backgroundColor: council.color }}
+      >
+        {council.name[0]}
+      </div>
       <span className="text-sm font-medium flex-1">{council.name}</span>
       <ChevronRight size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
     </button>
   );
 }
 
-function CouncilBadge({ council, sub }) {
+function CouncilBadge({ council }) {
   if (!council) return null;
   return (
     <div className="flex items-center gap-2.5 mb-6">
-      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
-        style={{ backgroundColor: council.color }}>{council.name[0]}</div>
+      <div
+        className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
+        style={{ backgroundColor: council.color }}
+      >
+        {council.name[0]}
+      </div>
       <div>
-        <p className="text-xs text-muted-foreground">{sub || 'Selected council'}</p>
+        <p className="text-xs text-muted-foreground">Selected council</p>
         <p className="text-sm font-semibold">{council.name}</p>
       </div>
     </div>
@@ -212,16 +207,25 @@ function FormField({ label, type, value, placeholder, onChange }) {
   return (
     <div>
       <label className="block text-xs font-medium mb-1.5">{label}</label>
-      <input type={type} value={value} onChange={onChange} placeholder={placeholder} required
-        className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring" />
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required
+        className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+      />
     </div>
   );
 }
 
 function SubmitButton({ loading, children }) {
   return (
-    <button type="submit" disabled={loading}
-      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-foreground text-background text-sm font-medium rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60">
+    <button
+      type="submit"
+      disabled={loading}
+      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-foreground text-background text-sm font-medium rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+    >
       {loading && <Loader2 size={14} className="animate-spin" />}
       {children}
     </button>
