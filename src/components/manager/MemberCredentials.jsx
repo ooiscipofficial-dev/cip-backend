@@ -1,22 +1,48 @@
 import { useState, useEffect } from 'react';
-import { COUNCILS_DATA, MEMBER_ROLES, getMemberCredentials, setMemberCredentials } from '../../lib/mockData';
+import { COUNCILS_DATA, MEMBER_ROLES } from '../../lib/mockData';
 import { Key, Save, Plus, Trash2, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
 import { saveMemberCredentials } from '../../lib/dataStore';
+
+function normalizeCredentials(credentials) {
+  if (!credentials || typeof credentials !== 'object') return {};
+
+  if (Array.isArray(credentials)) {
+    return Object.fromEntries(
+      credentials.map((member, index) => [
+        member.memberKey || member.id || `member_${index}`,
+        {
+          username: member.username || '',
+          password: member.password || '',
+          name: member.name || '',
+          role: member.role || 'Council Junior',
+        },
+      ])
+    );
+  }
+
+  return Object.fromEntries(
+    Object.entries(credentials).map(([key, member]) => [
+      key,
+      {
+        username: member?.username || '',
+        password: member?.password || '',
+        name: member?.name || '',
+        role: member?.role || 'Council Junior',
+      },
+    ])
+  );
+}
+
 export default function MemberCredentials({ storeData, onClose, onRefresh }) {
   const [selectedId, setSelectedId] = useState(COUNCILS_DATA[0].id);
   const [expanded,   setExpanded]   = useState({});
   const [showPwd,    setShowPwd]    = useState({});
   const [saved,      setSaved]      = useState(false);
-    // Inside MemberCredentials.jsx
-  useEffect(() => {
-    if (selectedId && storeData[selectedId]) {
-      const existing = storeData[selectedId].credentials;
-      setCreds(existing && Object.keys(existing).length > 0 ? existing : loadCreds(selectedId));
-    }
-  }, [selectedId, storeData]);
+
   function loadCreds(id) {
-    const ex = getMemberCredentials(id);
+    const ex = normalizeCredentials(storeData?.[id]?.credentials);
     if (Object.keys(ex).length > 0) return ex;
+
     const slots = {};
     MEMBER_ROLES.forEach((role, i) => {
       slots[`${role.toLowerCase().replace(/ /g,'_')}_${i+1}`] = { username: '', password: '', name: '', role };
@@ -26,7 +52,11 @@ export default function MemberCredentials({ storeData, onClose, onRefresh }) {
 
   const [creds, setCreds] = useState(() => loadCreds(COUNCILS_DATA[0].id));
 
-  function changeCouncil(id) { setSelectedId(id); setCreds(loadCreds(id)); setSaved(false); }
+  useEffect(() => {
+    setCreds(loadCreds(selectedId));
+  }, [selectedId, storeData]);
+
+  function changeCouncil(id) { setSelectedId(id); setSaved(false); }
   function update(key, field, val) { setCreds(c => ({ ...c, [key]: { ...c[key], [field]: val } })); setSaved(false); }
   function addMember() { setCreds(c => ({ ...c, [`member_${Date.now()}`]: { username: '', password: '', name: '', role: 'Council Junior' } })); }
   function remove(key) { setCreds(c => { const n = {...c}; delete n[key]; return n; }); }
@@ -80,7 +110,7 @@ export default function MemberCredentials({ storeData, onClose, onRefresh }) {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-sm font-semibold">{council?.name}</p>
-                <p className="text-xs text-muted-foreground">{entries.length} members</p>
+                <p className="text-xs text-muted-foreground">{entries.length} credential slots loaded from dashboard data</p>
               </div>
               <div className="flex gap-2">
                 <button onClick={addMember}

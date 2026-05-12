@@ -12,6 +12,11 @@ export default function InitiativeDetail({
 
   // NEW: State to trigger the review modal
   const [reviewType, setReviewType] = useState(null);
+  const isApproved = String(initiative.status || '').toLowerCase() === 'approved';
+  const isRejected = String(initiative.status || '').toLowerCase() === 'rejected';
+  const isPending = String(initiative.status || '').toLowerCase() === 'pending';
+  const isSuccessful = initiative.isSuccessful === true || Number(initiative.isSuccessful) === 1;
+  const canMarkExecution = isPresident && isApproved && !isSuccessful;
 
   function submitComment(commentData) {
     if (commentData?.text) {
@@ -59,17 +64,17 @@ export default function InitiativeDetail({
           <h1 className="text-2xl font-bold">{initiative.title}</h1>
           
           {/* Status Badges */}
-          {initiative.status === 'approved' && (
+          {isApproved && (
             <span className="px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold uppercase tracking-wider border border-green-200">
               Approved
             </span>
           )}
-          {initiative.status === 'rejected' && (
+          {isRejected && (
             <span className="px-2 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold uppercase tracking-wider border border-red-200">
               Rejected
             </span>
           )}
-          {initiative.status === 'pending' && (
+          {isPending && (
             <span className="px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-bold uppercase tracking-wider border border-yellow-200">
               Pending Review
             </span>
@@ -83,7 +88,7 @@ export default function InitiativeDetail({
         <div className="flex items-center gap-2 flex-wrap">
 
           {/* MANAGER APPROVE / REJECT BUTTONS */}
-          {isManager && initiative.status !== 'approved' && initiative.status !== 'rejected' && (
+          {isManager && !isApproved && !isRejected && (
             <div className="flex gap-2 mr-2 border-r pr-2 border-border">
               <button
                 onClick={() => setReviewType('approve')}
@@ -107,7 +112,7 @@ export default function InitiativeDetail({
                 
 
                 {/* 2. Only show Reset if it's already been acted upon */}
-                {(initiative.status === 'approved' || initiative.status === 'rejected') && (
+                {(isApproved || isRejected) && (
                   <button 
                     onClick={async () => {
                       if(window.confirm("Are you sure you want to move this back to Pending?")) {
@@ -123,10 +128,10 @@ export default function InitiativeDetail({
               </div>
             </div>
           )}
-          {isPresident && initiative.executedOnTime === null && (
+          {canMarkExecution && (
             <button onClick={() => setShowExecutionBox(s => !s)}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-emerald-300 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors">
-              <CheckSquare size={12} /> Mark Execution
+              <CheckSquare size={12} /> Mark Completed
             </button>
           )}
           {onEdit && (
@@ -154,7 +159,7 @@ export default function InitiativeDetail({
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-lg font-semibold">{initiative.title}</h2>
-            {initiative.isSuccessful && (
+            {isSuccessful && (
               <span className="status-pill bg-amber-50 text-amber-700 border border-amber-200">
                 <Star size={10} /> Successful
               </span>
@@ -195,9 +200,9 @@ export default function InitiativeDetail({
       )}
 
       {/* President: mark execution box */}
-      {isPresident && showExecutionBox && (
+      {canMarkExecution && showExecutionBox && (
         <div className="mb-5 border border-border rounded-xl p-4 bg-background">
-          <p className="text-xs font-semibold mb-2">Mark Execution Outcome</p>
+          <p className="text-xs font-semibold mb-2">Mark Approved Initiative Completed</p>
           <input
             type="text"
             value={execNote}
@@ -328,7 +333,7 @@ export default function InitiativeDetail({
       )}
 
       {/* Official Manager Decision Note */}
-      {initiative.status === 'approved' && initiative.managerNote && (
+      {isApproved && initiative.managerNote && (
         <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Official Manager Approval</span>
@@ -339,7 +344,7 @@ export default function InitiativeDetail({
         </div>
       )}
 
-      {initiative.status === 'rejected' && initiative.managerNote && (
+      {isRejected && initiative.managerNote && (
         <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-xl">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wider">Manager Feedback (Rejected)</span>

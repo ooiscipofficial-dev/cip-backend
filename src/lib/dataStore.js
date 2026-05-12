@@ -349,12 +349,14 @@ export async function markInitiativeExecution(councilId, initiativeId, executedO
     const data = await getCouncilData(councilId);
     const initiative = data.initiatives?.find(i => i.id === initiativeId);
     if (!initiative) return { success: false, error: "Initiative not found" };
+    if (String(initiative.status || '').toLowerCase() !== 'approved') {
+      return { success: false, error: "Only manager-approved initiatives can be marked completed" };
+    }
 
     initiative.executedOnTime = executedOnTime;
     initiative.successNote = successNote || '';
-    if (executedOnTime) {
-      initiative.isSuccessful = true;
-    }
+    initiative.isSuccessful = true;
+    initiative.successVisible = true;
 
     await councilApi.saveInitiativeAPI({ councilId, ...initiative });
     return { success: true };

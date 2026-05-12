@@ -85,7 +85,7 @@ export default function CouncilPage({ session }) {
     /** @type {Initiative | null} */ (null)
   );
 
-  const isPresidentUser = checkPresident(session);
+  const isPresidentUser = checkPresident(session) && session?.councilId === councilId;
   const managerView = checkManager(session);
   const canEdit = isPresidentUser || managerView;
 
@@ -271,7 +271,12 @@ export default function CouncilPage({ session }) {
   }
 
   function handleSaveInfo(info) {
-    saveCouncilInfo(councilId, info);
+    saveCouncilInfo(councilId, {
+      ...info,
+      name: council.name,
+      color: council.color,
+      googleEmail: council.googleEmail,
+    });
     refresh();
   }
   async function handleRevert(initiativeId) {
@@ -429,7 +434,7 @@ export default function CouncilPage({ session }) {
           <PadletTabs
             council={mergedCouncil}
             councilInfo={councilInfo}
-            canManagePadlets={managerView}
+            canManagePadlets={canEdit}
             onPadletsUpdated={refresh}
           />
         )}

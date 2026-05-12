@@ -19,11 +19,12 @@ export function clearSession() {
 }
 
 export function isPresident(session) {
-  return session?.role === 'President';
+  return String(session?.role || '').toLowerCase() === 'president';
 }
 
 export function isManager(session) {
-  return session?.role === 'manager';
+  const userType = session?.type || session?.role;
+  return String(userType || '').toLowerCase() === 'manager';
 }
 
 export async function memberLogin(username, password, councilId) {

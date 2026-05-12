@@ -11,8 +11,8 @@ export default function Navbar({ session }) {
     window.location.href = '/';
   }
 
-  const isPresident = session?.role === 'President';
-  const isManager = session?.type === 'manager';
+  const isPresident = String(session?.role || '').toLowerCase() === 'president';
+  const isManager = String(session?.type || session?.role || '').toLowerCase() === 'manager';
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
