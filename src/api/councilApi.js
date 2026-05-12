@@ -115,6 +115,19 @@ export const councilApi = {
     return res.ok;
   },
 
+  async completeInitiativeAPI(data) {
+    const res = await fetch(`${API_BASE}/initiatives/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(payload.error || payload.details || 'Failed to mark initiative completed');
+    }
+    return payload;
+  },
+
   async addCommentAPI(data) {
     const res = await fetch(`${API_BASE}/initiatives/comment`, {
       method: 'POST',

@@ -18,13 +18,18 @@ export function clearSession() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
+function normalizeRole(role) {
+  return String(role || '').trim().toLowerCase();
+}
+
 export function isPresident(session) {
-  return String(session?.role || '').toLowerCase() === 'president';
+  const role = normalizeRole(session?.role);
+  return role === 'president' || role === 'council president';
 }
 
 export function isManager(session) {
   const userType = session?.type || session?.role;
-  return String(userType || '').toLowerCase() === 'manager';
+  return normalizeRole(userType) === 'manager';
 }
 
 export async function memberLogin(username, password, councilId) {

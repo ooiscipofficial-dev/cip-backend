@@ -10,9 +10,12 @@ import {
 
 const TABS = ['active', 'successful', 'history'];
 
+function normalizeStatus(status) {
+  return String(status || '').trim().toLowerCase();
+}
+
 export default function InitiativeList({ 
   initiatives = [], // Data passed from parent
-  pendingList = [],
   onSelect, 
   onDelete, 
   onApprove, 
@@ -22,9 +25,6 @@ export default function InitiativeList({
   const [tab, setTab] = useState('active');
   const [reviewModal, setReviewModal] = useState(null);
   const [reviewNote, setReviewNote] = useState('');
-  const cleanPending = pendingList.filter(
-    pendingItem => !initiatives.some(approvedItem => approvedItem.id === pendingItem.id)
-  );
   const today = new Date().toISOString().split('T')[0];
 
   // ─── 1. DATA CATEGORIZATION ─────────────────────────────────────────────
@@ -32,12 +32,12 @@ export default function InitiativeList({
   const categorizedData = useMemo(() => {
     return {
       active: initiatives.filter(i => 
-        i.status !== 'Approved' && 
-        i.status !== 'Rejected' && 
+        normalizeStatus(i.status) !== 'approved' &&
+        normalizeStatus(i.status) !== 'rejected' &&
         Number(i.isSuccessful) !== 1
       ),
-      approved: initiatives.filter(i => i.status === 'Approved'),
-      rejected: initiatives.filter(i => i.status === 'Rejected'),
+      approved: initiatives.filter(i => normalizeStatus(i.status) === 'approved'),
+      rejected: initiatives.filter(i => normalizeStatus(i.status) === 'rejected'),
       successful: initiatives.filter(i => 
         i.isSuccessful === true || Number(i.isSuccessful) === 1
       )
@@ -95,6 +95,7 @@ export default function InitiativeList({
           )}
           {categorizedData.active.map(ini => {
             const daysOverdue = getDaysOverdue(ini.executionDate, ini.executedOnTime);
+            const status = normalizeStatus(ini.status);
             return (
               <div key={ini.id} onClick={() => onSelect?.(ini)}
                 className={`border rounded-xl p-4 bg-card hover:bg-muted/30 transition-all cursor-pointer group
@@ -104,7 +105,7 @@ export default function InitiativeList({
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <p className="text-sm font-semibold">{ini.title}</p>
-                      {ini.status === 'Pending' || ini.status === 'Not Started' ? (
+                      {status === 'pending' || status === 'not started' ? (
                         <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] bg-amber-50 text-amber-700 border border-amber-200">
                           <Clock size={10} /> {ini.status}
                         </span>
@@ -119,7 +120,7 @@ export default function InitiativeList({
                   </div>
 
                   <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                    {isManager && (ini.status === 'Pending' || ini.status === 'Not Started') && (
+                    {isManager && (status === 'pending' || status === 'not started') && (
                       <div className="flex gap-1">
                         <button onClick={() => setReviewModal({ initiative: ini, action: 'approve' })}
                           className="text-[10px] px-2 py-1 bg-emerald-600 text-white rounded-md hover:bg-emerald-700">Approve</button>
@@ -127,9 +128,11 @@ export default function InitiativeList({
                           className="text-[10px] px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600">Reject</button>
                       </div>
                     )}
-                    <button onClick={() => onDelete?.(ini.id)} className="p-1 hover:text-red-500 transition-colors">
-                      <Trash2 size={14} />
-                    </button>
+                    {onDelete && (
+                      <button onClick={() => onDelete(ini.id)} className="p-1 hover:text-red-500 transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                     <ChevronRight size={16} className="text-muted-foreground group-hover:text-foreground" />
                   </div>
                 </div>

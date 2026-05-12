@@ -3,27 +3,31 @@ import { Pencil, Check, X } from 'lucide-react';
 
 // Presidents can edit: mission, homepage, achievement, mainProject
 // Managers can edit everything
-export default function CouncilInfoEditor({ council, info, onSave, canEdit, isPresident, isManager }) {
+export default function CouncilInfoEditor({ council, info, onSave, canEdit }) {
   const [editing, setEditing] = useState(false);
+  const storedInfo = info?.info || {};
+  const storedProject = info?.mainProject || {};
 
   const [form, setForm] = useState({
-    mission: info.info?.mission || council.mission || '',
-    homepage: info.info?.homepage || council.homepage || '',
-    achievement: info.info?.achievement || council.achievement || '',
-    mainProjectTitle: info.mainProject?.title || council.mainProject?.title || '',
-    mainProjectProgress: info.mainProject?.progress ?? council.mainProject?.progress ?? 0,
-    mainProjectStatus: info.mainProject?.status || council.mainProject?.status || 'In Progress',
+    mission: storedInfo.mission || council.mission || '',
+    homepage: storedInfo.homepage || council.homepage || '',
+    achievement: storedInfo.achievement || council.achievement || '',
+    mainProjectTitle: storedProject.title || council.mainProject?.title || '',
+    mainProjectProgress: storedProject.progress ?? council.mainProject?.progress ?? 0,
+    mainProjectStatus: storedProject.status || council.mainProject?.status || 'In Progress',
   });
 
   useEffect(() => {
     if (!editing) {
+      const nextInfo = info?.info || {};
+      const nextProject = info?.mainProject || {};
       setForm({
-        mission: info.info?.mission || council.mission || '',
-        homepage: info.info?.homepage || council.homepage || '',
-        achievement: info.info?.achievement || council.achievement || '',
-        mainProjectTitle: info.mainProject?.title || council.mainProject?.title || '',
-        mainProjectProgress: info.mainProject?.progress ?? council.mainProject?.progress ?? 0,
-        mainProjectStatus: info.mainProject?.status || council.mainProject?.status || 'In Progress',
+        mission: nextInfo.mission || council.mission || '',
+        homepage: nextInfo.homepage || council.homepage || '',
+        achievement: nextInfo.achievement || council.achievement || '',
+        mainProjectTitle: nextProject.title || council.mainProject?.title || '',
+        mainProjectProgress: nextProject.progress ?? council.mainProject?.progress ?? 0,
+        mainProjectStatus: nextProject.status || council.mainProject?.status || 'In Progress',
       });
     }
   }, [info, council, editing]);
@@ -34,12 +38,12 @@ export default function CouncilInfoEditor({ council, info, onSave, canEdit, isPr
   }
 
   const display = {
-    mission: info.info?.mission || council.mission,
-    homepage: info.info?.homepage || council.homepage,
-    achievement: info.info?.achievement || council.achievement,
-    mainProjectTitle: info.mainProject?.title || council.mainProject?.title,
-    mainProjectProgress: info.mainProject?.progress ?? council.mainProject?.progress ?? 0,
-    mainProjectStatus: info.mainProject?.status || council.mainProject?.status,
+    mission: storedInfo.mission || council.mission,
+    homepage: storedInfo.homepage || council.homepage,
+    achievement: storedInfo.achievement || council.achievement,
+    mainProjectTitle: storedProject.title || council.mainProject?.title,
+    mainProjectProgress: storedProject.progress ?? council.mainProject?.progress ?? 0,
+    mainProjectStatus: storedProject.status || council.mainProject?.status,
   };
 
   return (

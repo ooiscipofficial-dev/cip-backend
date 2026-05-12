@@ -38,7 +38,7 @@ export default function InitiativeDetail({
 
   // Overdue calculation
   const today = new Date().toISOString().split('T')[0];
-  const isOverdue = initiative.executionDate && initiative.executionDate < today && initiative.executedOnTime === null;
+  const isOverdue = initiative.executionDate && initiative.executionDate < today && !isSuccessful && initiative.executedOnTime == null;
   const daysOverdue = isOverdue
     ? Math.floor(
         (new Date(today).getTime() - new Date(initiative.executionDate).getTime()) / 86400000
@@ -140,10 +140,12 @@ export default function InitiativeDetail({
               <Pencil size={12} /> Edit
             </button>
           )}
-          <button onClick={() => setShowCommentBox(true)}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-foreground text-background rounded-lg hover:opacity-90">
-            <MessageSquare size={12} /> Comment
-          </button>
+          {isManager && (
+            <button onClick={() => setShowCommentBox(true)}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-foreground text-background rounded-lg hover:opacity-90">
+              <MessageSquare size={12} /> Comment
+            </button>
+          )}
         </div>
       </div>
 

@@ -16,11 +16,10 @@ import PadletTabs from '../components/council/PadletTabs';
 import DriveSection from '../components/council/DriveSection';
 import { COUNCILS_DATA } from '../lib/mockData';
 import {
-  getCouncilData, saveInitiative, deleteInitiative, getCouncilInfo, saveCouncilInfo,
-  wipeInitiativeCompletely, rejectInitiative, markInitiativeSuccessful, toggleSuccessVisibility,
-  addManagerComment, calculateImpactScore, markInitiativeExecution, approveInitiative, revertToPending, deleteManagerComment, getAllCouncilsData
+  getCouncilData, saveInitiative, deleteInitiative, saveCouncilInfo,
+  rejectInitiative, markInitiativeSuccessful, toggleSuccessVisibility,
+  addManagerComment, calculateImpactScore, markInitiativeExecution, approveInitiative, revertToPending, deleteManagerComment
 } from '../lib/dataStore';
-import onSave from '../components/council/InitiativeForm'; // Import the onSave function
 import { isPresident as checkPresident, isManager as checkManager } from '../lib/authStore';
 import { LayoutGrid, Calendar, Settings, Plus, Layout, HardDrive, Globe, TrendingUp } from 'lucide-react';
 import CommonsView from '../components/council/CommonsView';
@@ -34,7 +33,6 @@ export default function CouncilPage({ session }) {
   const [councilData, setCouncilData] = useState({ 
     initiatives: [], pendingList: [], approvedList: [], rejectedList: [] 
   });
-  const [allStoreData, setAllStoreData] = useState({});
   const [councilInfo, setCouncilInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -53,9 +51,6 @@ export default function CouncilPage({ session }) {
 
         setCouncilData(data);
         setCouncilInfo(data);
-
-        const all = await getAllCouncilsData();
-        setAllStoreData(all);
       }
     } catch (err) {
       console.error("Refresh failed:", err);
@@ -90,14 +85,20 @@ export default function CouncilPage({ session }) {
   const canEdit = isPresidentUser || managerView;
 
   const handleSaveInitiative = async (formData) => {
+      if (!canEdit) {
+        alert("Only the council president or a manager can edit initiatives.");
+        return;
+      }
       const success = await saveInitiative(councilId, formData);
       if (success) {
         await refresh();
         setShowForm(false);
+        setEditingInitiative(null);
       }
     };
 
   async function handleDelete(initiativeId) {
+    if (!canEdit) return;
     // 1. Confirm with the user (optional but recommended)
     if (!window.confirm("Are you sure you want to delete this initiative?")) return;
 
@@ -122,7 +123,7 @@ export default function CouncilPage({ session }) {
   async function handleApprove(initiativeId, reviewData) {
     try {
       // 1. Run the backend logic
-      const updatedData = await approveInitiative(councilId, initiativeId, reviewData);
+      await approveInitiative(councilId, initiativeId, reviewData);
       
       // 2. Clear the detail view first
       setSelectedInitiative(null);
@@ -153,22 +154,9 @@ export default function CouncilPage({ session }) {
   }
 
   async function handleReject(initiativeId, feedbackData) {
-      try {
-        await rejectInitiative(councilId, initiativeId, feedbackData);
-        await refresh();
-        
-        // After rejection, usually we close the detail view because it's no longer "active"
-        setSelectedInitiative(null);
-      } catch (err) {
-        console.error("Rejection failed:", err);
-      }
-    }
-
-
-  async function handleReject(initiativeId) {
     try {
       // 1. Call the dataStore function
-      await rejectInitiative(councilId, initiativeId); 
+      await rejectInitiative(councilId, initiativeId, feedbackData);
       
       // 2. Refresh the UI data
       await refresh(); 
@@ -231,7 +219,16 @@ export default function CouncilPage({ session }) {
 
   async function handleMarkExecution(initiativeId, onTime, note) {
     try {
-      await markInitiativeExecution(councilId, initiativeId, onTime, note);
+      if (!isPresidentUser) {
+        alert("Only the council president can mark approved initiatives completed.");
+        return;
+      }
+
+      const result = await markInitiativeExecution(councilId, initiativeId, onTime, note);
+      if (!result.success) {
+        alert(result.error || "Failed to mark initiative completed.");
+        return;
+      }
       await refresh();
       
       // Update the detail view to reflect the execution
@@ -270,14 +267,20 @@ export default function CouncilPage({ session }) {
     }
   }
 
-  function handleSaveInfo(info) {
-    saveCouncilInfo(councilId, {
+  async function handleSaveInfo(info) {
+    if (!canEdit) return;
+
+    const result = await saveCouncilInfo(councilId, {
       ...info,
       name: council.name,
       color: council.color,
       googleEmail: council.googleEmail,
     });
-    refresh();
+    if (!result.success) {
+      alert(result.error || "Failed to save council information.");
+      return;
+    }
+    await refresh();
   }
   async function handleRevert(initiativeId) {
         setIsLoading(true);
@@ -333,7 +336,7 @@ export default function CouncilPage({ session }) {
             <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
               Impact Score: {impactScore}
             </span>
-            {!showForm && !selectedInitiative && tab === 'initiatives' && (
+            {canEdit && !showForm && !selectedInitiative && tab === 'initiatives' && (
               <button
                 onClick={() => { setEditingInitiative(null); setShowForm(true); }}
                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"
@@ -351,7 +354,7 @@ export default function CouncilPage({ session }) {
           <TabBtn id="padlet" active={tab} setTab={setTab} icon={<Layout size={12} />} label="Padlet" />
           <TabBtn id="drive" active={tab} setTab={setTab} icon={<HardDrive size={12} />} label="Drive" />
           <TabBtn id="info" active={tab} setTab={setTab} icon={<Settings size={12} />} label="Info" />
-          <TabBtn id="strategy" active={tab} setTab={setTab} icon={<TrendingUp size={12} />} label="Strategy" />
+          {managerView && <TabBtn id="strategy" active={tab} setTab={setTab} icon={<TrendingUp size={12} />} label="Strategy" />}
         </div>
 
         {tab === 'initiatives' && (
@@ -360,6 +363,7 @@ export default function CouncilPage({ session }) {
               <InitiativeForm 
                 initial={editingInitiative} 
                 councilId={councilId} 
+                council={mergedCouncil}
                 onSave={handleSaveInitiative} 
                 onCancel={() => {setShowForm(false);setEditingInitiative(null);}} 
               />
@@ -376,7 +380,6 @@ export default function CouncilPage({ session }) {
                 onAddComment={handleAddComment}
                 /* --- THESE MUST BE HERE FOR THE NETWORK CALLS TO WORK --- */
                 onApprove={handleApprove} 
-                onReject={handleReject}
                 onMarkExecution={handleMarkExecution}
                 /* -------------------------------------------------------- */
 
@@ -412,12 +415,11 @@ export default function CouncilPage({ session }) {
               // Pass the raw type; we will handle capitalization in the component
               type: ini.type 
             }))} 
-            onAddInitiative={(dateStr) => {
-              if (!canEdit) return;
+            onAddInitiative={canEdit ? (dateStr) => {
               setEditingInitiative({ executionDate: dateStr });
               setShowForm(true);
               setTab('initiatives'); // optional: switch to initiatives tab to see the form
-            }}
+            } : null}
             onEventClick={(eventId) => {
               // Open the initiative detail view
               const initiative = (councilData.initiatives || []).find(i => i.id === eventId);
@@ -457,7 +459,7 @@ export default function CouncilPage({ session }) {
           />
         )}
 
-        {tab === 'strategy' && (
+        {managerView && tab === 'strategy' && (
           <StrategicManager 
             councilId={councilId} 
             data={councilData} 

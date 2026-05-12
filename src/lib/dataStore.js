@@ -31,6 +31,7 @@ export async function syncCouncilToCloud(councilId, data) {
       localStorage.removeItem('cip_manager_all_data_v3');
       localStorage.removeItem('cip_manager_all_data_v4');
       localStorage.removeItem('cip_manager_all_data_v5');
+      localStorage.removeItem('cip_manager_all_data_v6');
     }
     return { success };
   } catch (error) {
@@ -155,12 +156,13 @@ export async function clearAllCouncilData(councilId) {
 import { COUNCILS_DATA } from './mockData';
 
 export async function getAllCouncilsData() {
-  const CACHE_KEY = 'cip_manager_all_data_v5';
+  const CACHE_KEY = 'cip_manager_all_data_v6';
   [
     'cip_manager_all_data',
     'cip_manager_all_data_v2',
     'cip_manager_all_data_v3',
-    'cip_manager_all_data_v4'
+    'cip_manager_all_data_v4',
+    'cip_manager_all_data_v5'
   ].forEach(key => localStorage.removeItem(key));
 
   const cached = localStorage.getItem(CACHE_KEY);
@@ -353,13 +355,15 @@ export async function markInitiativeExecution(councilId, initiativeId, executedO
       return { success: false, error: "Only manager-approved initiatives can be marked completed" };
     }
 
-    initiative.executedOnTime = executedOnTime;
-    initiative.successNote = successNote || '';
-    initiative.isSuccessful = true;
-    initiative.successVisible = true;
-
-    await councilApi.saveInitiativeAPI({ councilId, ...initiative });
-    return { success: true };
+    const session = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    const result = await councilApi.completeInitiativeAPI({
+      councilId,
+      initiativeId,
+      executedOnTime,
+      successNote: successNote || '',
+      completedBy: session?.name || session?.username || 'President',
+    });
+    return { success: true, initiative: result.initiative };
   } catch (error) {
     console.error("Failed to mark execution:", error);
     return { success: false, error: error.message };
@@ -466,6 +470,10 @@ export async function revertToPending(councilId, initiativeId) {
     if (!initiative) throw new Error("Initiative not found");
 
     initiative.status = 'pending';
+    initiative.isSuccessful = false;
+    initiative.successVisible = false;
+    initiative.executedOnTime = null;
+    initiative.successNote = '';
     await councilApi.saveInitiativeAPI({ councilId, ...initiative });
     
     return { success: true };
