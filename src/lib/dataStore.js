@@ -421,11 +421,20 @@ export async function toggleSuccessVisibility(councilId, initiativeId) {
   }
 }
 
-  export async function saveMemberCredentials(councilId, credentials) {
-    try {
-      await councilApi.saveCredentialsAPI(councilId, credentials);
+export async function getMemberCredentials(councilId, token) {
+  try {
+    return await councilApi.getCredentialsAPI(councilId, token);
+  } catch (error) {
+    console.error("Load credentials error:", error);
+    return {};
+  }
+}
+
+export async function saveMemberCredentials(councilId, credentials, token) {
+  try {
+      await councilApi.saveCredentialsAPI(councilId, credentials, token);
       return true;
-    } catch (error) {
+  } catch (error) {
       console.error("Save credentials error:", error);
       return false;
     }

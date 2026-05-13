@@ -240,7 +240,7 @@ export default function ManagerDashboard({ session }) {
 
       {showPDF   && <PDFReport councils={councils} storeData={storeData} onClose={() => setShowPDF(false)} />}
       {showClear && <YearEndClear onClose={() => setShowClear(false)} />}
-      {showCreds && <MemberCredentials storeData={storeData} onClose={() => setShowCreds(false)} onRefresh={loadData} />}
+      {showCreds && <MemberCredentials storeData={storeData} session={session} onClose={() => setShowCreds(false)} onRefresh={loadData} />}
       {showCommons && <CommonsManager onClose={() => setShowCommons(false)} />}
     </div>
   );

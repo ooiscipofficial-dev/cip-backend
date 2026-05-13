@@ -138,10 +138,20 @@ export const councilApi = {
     return res.ok;
   },
 
-  async saveCredentialsAPI(councilId, credentials) {
+  async getCredentialsAPI(councilId, token) {
+    const res = await fetch(`${API_BASE}/credentials/list?councilId=${encodeURIComponent(councilId)}`, {
+      headers: { Authorization: `Bearer ${token || ''}` },
+      cache: 'no-store'
+    });
+    if (!res.ok) return {};
+    const data = await res.json();
+    return data.credentials || {};
+  },
+
+  async saveCredentialsAPI(councilId, credentials, token) {
     const res = await fetch(`${API_BASE}/credentials/save`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
       body: JSON.stringify({ councilId, credentials })
     });
     return res.ok;

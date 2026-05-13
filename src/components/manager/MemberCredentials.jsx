@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { COUNCILS_DATA, MEMBER_ROLES } from '../../lib/mockData';
 import { Key, Save, Plus, Trash2, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
-import { saveMemberCredentials } from '../../lib/dataStore';
+import { getMemberCredentials, saveMemberCredentials } from '../../lib/dataStore';
 
 function normalizeCredentials(credentials) {
   if (!credentials || typeof credentials !== 'object') return {};
@@ -48,27 +48,56 @@ function emptyRoleSlots() {
   return slots;
 }
 
-export default function MemberCredentials({ storeData, onClose, onRefresh }) {
+export default function MemberCredentials({ storeData, session, onClose, onRefresh }) {
   const [selectedId, setSelectedId] = useState(COUNCILS_DATA[0].id);
   const [creds, setCreds] = useState(emptyRoleSlots);
+  const [savedCreds, setSavedCreds] = useState({});
+  const [loadingCreds, setLoadingCreds] = useState(false);
   const [expanded, setExpanded] = useState({});
   const [showPwd, setShowPwd] = useState({});
   const [saved, setSaved] = useState(false);
 
-  const savedCreds = normalizeCredentials(storeData?.[selectedId]?.credentials);
   const hasSavedCredentials = Object.keys(savedCreds).length > 0;
   const council = COUNCILS_DATA.find(c => c.id === selectedId);
   const entries = Object.entries(creds);
 
   useEffect(() => {
-    const nextCreds = hasSavedCredentials ? savedCreds : emptyRoleSlots();
+    let cancelled = false;
+
+    async function loadCredentials() {
+      setLoadingCreds(true);
+      const loaded = normalizeCredentials(await getMemberCredentials(selectedId, session?.token));
+      if (cancelled) return;
+
+      const nextCreds = Object.keys(loaded).length > 0 ? loaded : emptyRoleSlots();
+      const filledKeys = Object.entries(nextCreds)
+        .filter(([, member]) => member.username || member.password || member.name)
+        .map(([key]) => key);
+
+      setSavedCreds(loaded);
+      setCreds(nextCreds);
+      setExpanded(filledKeys.length > 0 ? Object.fromEntries(filledKeys.map(key => [key, true])) : {});
+      setLoadingCreds(false);
+    }
+
+    loadCredentials();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, session?.token]);
+
+  async function refreshSelectedCredentials() {
+    const loaded = normalizeCredentials(await getMemberCredentials(selectedId, session?.token));
+    const nextCreds = Object.keys(loaded).length > 0 ? loaded : emptyRoleSlots();
     const filledKeys = Object.entries(nextCreds)
       .filter(([, member]) => member.username || member.password || member.name)
       .map(([key]) => key);
 
+    setSavedCreds(loaded);
     setCreds(nextCreds);
     setExpanded(filledKeys.length > 0 ? Object.fromEntries(filledKeys.map(key => [key, true])) : {});
-  }, [selectedId, storeData]);
+  }
 
   function changeCouncil(id) {
     setSelectedId(id);
@@ -103,10 +132,11 @@ export default function MemberCredentials({ storeData, onClose, onRefresh }) {
       }
     }
 
-    const success = await saveMemberCredentials(selectedId, validCreds);
+    const success = await saveMemberCredentials(selectedId, validCreds, session?.token);
 
     if (success) {
       setSaved(true);
+      await refreshSelectedCredentials();
       if (onRefresh) await onRefresh();
       setTimeout(() => setSaved(false), 2500);
     } else {
@@ -148,6 +178,8 @@ export default function MemberCredentials({ storeData, onClose, onRefresh }) {
                 <p className="text-xs text-muted-foreground">
                   {hasSavedCredentials
                     ? `${entries.length} saved credential${entries.length === 1 ? '' : 's'} loaded from DB`
+                    : loadingCreds
+                      ? 'Loading saved credentials...'
                     : 'No saved credentials in dashboard data yet - showing editable role slots'}
                 </p>
               </div>
