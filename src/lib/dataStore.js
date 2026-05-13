@@ -1,5 +1,16 @@
 import { councilApi, API_BASE } from '../api/councilApi';
 
+function stripSensitiveFields(data) {
+  if (!data || typeof data !== 'object') return data;
+  if (Array.isArray(data)) return data.map(stripSensitiveFields);
+
+  return Object.fromEntries(
+    Object.entries(data)
+      .filter(([key]) => key !== 'credentials' && key !== 'password' && key !== 'username')
+      .map(([key, value]) => [key, stripSensitiveFields(value)])
+  );
+}
+
 // ─── Core store (Now Cloud-Synced) ───────────────────────────
 const DATA_KEY = 'councilhub_data_v2';
 const THEME_KEY = 'councilhub_theme';
@@ -156,13 +167,14 @@ export async function clearAllCouncilData(councilId) {
 import { COUNCILS_DATA } from './mockData';
 
 export async function getAllCouncilsData() {
-  const CACHE_KEY = 'cip_manager_all_data_v6';
+  const CACHE_KEY = 'cip_manager_all_data_v7';
   [
     'cip_manager_all_data',
     'cip_manager_all_data_v2',
     'cip_manager_all_data_v3',
     'cip_manager_all_data_v4',
-    'cip_manager_all_data_v5'
+    'cip_manager_all_data_v5',
+    'cip_manager_all_data_v6'
   ].forEach(key => localStorage.removeItem(key));
 
   const cached = localStorage.getItem(CACHE_KEY);
@@ -180,7 +192,7 @@ export async function getAllCouncilsData() {
     const response = await fetch(`${API_BASE}/councils/full?cb=${Date.now()}`, { cache: 'no-store' });
     if (!response.ok) throw new Error("Failed to fetch aggregate data");
     
-    const data = await response.json();
+    const data = stripSensitiveFields(await response.json());
     
     // Save to local storage for instant next-load
     localStorage.setItem(CACHE_KEY, JSON.stringify({

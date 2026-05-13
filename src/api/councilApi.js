@@ -1,13 +1,24 @@
 // export const API_BASE = "http://127.0.0.1:8787/api"; // For local dev
 export const API_BASE = "https://councilhub-backend.oois-cip-official.workers.dev/api"; // For production
 
+function stripSensitiveFields(data) {
+  if (!data || typeof data !== 'object') return data;
+  if (Array.isArray(data)) return data.map(stripSensitiveFields);
+
+  return Object.fromEntries(
+    Object.entries(data)
+      .filter(([key]) => key !== 'credentials' && key !== 'password' && key !== 'username')
+      .map(([key, value]) => [key, stripSensitiveFields(value)])
+  );
+}
+
 export const councilApi = {
   async getCouncilData(councilId) {
     try {
       const res = await fetch(`${API_BASE}/council/data?id=${councilId}`);
       if (!res.ok) throw new Error("Network response was not ok");
       
-      const processed = await res.json();
+      const processed = stripSensitiveFields(await res.json());
 
       // Return a clean object natively returned by the D1 backend
       return {
@@ -20,7 +31,6 @@ export const councilApi = {
         successfulInitiatives: processed.successfulInitiatives || [],
         info: processed.info || {},
         calendarEvents: processed.calendarEvents || [],
-        credentials: processed.credentials || {},
         ...processed 
       };
     } catch (error) {
@@ -42,24 +52,6 @@ export const councilApi = {
     try {
       const data = await this.getCouncilData(councilId);
       
-      if (data.credentials && typeof data.credentials === 'object') {
-        const membersArray = Object.entries(data.credentials)
-          .filter(([key]) => key.startsWith('member_'))
-          .map(([id, details]) => ({
-            id: id,
-            ...details
-          }));
-
-        if (data.credentials.username && data.credentials.username.name) {
-          membersArray.unshift({
-            id: 'admin',
-            ...data.credentials.username,
-            role: data.credentials.username.role || 'Council Lead'
-          });
-        }
-
-        return membersArray;
-      }
       return [];
     } catch (error) {
       console.error("Member Hunt Error:", error);
