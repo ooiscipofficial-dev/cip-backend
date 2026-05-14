@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { getSession } from '../src/lib/authStore';
+import { getSession, getSessionCouncilId, getSessionType } from '../src/lib/authStore';
 import Auth from '../src/pages/Auth';
 import ManagerDashboard from '../src/pages/ManagerDashboard';
 import CouncilPage from '../src/pages/CouncilPage';
@@ -18,9 +18,7 @@ function RequireAuth({ children, allowedTypes }) {
     return <Navigate to="/auth" replace />;
   }
 
-  // Double check your session object: is it .type or .role?
-  // Based on your previous Worker code, it might be session.role
-  const userType = session.type || session.role; 
+  const userType = getSessionType(session);
 
   if (allowedTypes && !allowedTypes.includes(userType)) {
     return <Navigate to="/auth" replace />;
@@ -86,10 +84,10 @@ function RootRedirect() {
   const session = getSession();
   if (!session) return <Navigate to="/auth" replace />;
   
-  const userType = session.type || session.role;
+  const userType = getSessionType(session);
   if (userType === 'manager') return <Navigate to="/manager" replace />;
   
-  return <Navigate to={`/council/${session.councilId}`} replace />;
+  return <Navigate to={`/council/${getSessionCouncilId(session)}`} replace />;
 }
 
 export default App;

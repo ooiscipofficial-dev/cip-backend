@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { clearSession } from '../../lib/authStore';
+import { clearSession, getSessionCouncilId, getSessionType, isPresident as checkPresident } from '../../lib/authStore';
 import { LogOut, LayoutGrid, Globe, Crown, Files, Calendar } from 'lucide-react';
 import ThemeToggle from '../../components/layout/ThemeToggle';
 
@@ -11,8 +11,11 @@ export default function Navbar({ session }) {
     window.location.href = '/';
   }
 
-  const isPresident = String(session?.role || '').toLowerCase() === 'president';
-  const isManager = String(session?.type || session?.role || '').toLowerCase() === 'manager';
+  const sessionType = getSessionType(session);
+  const isPresident = checkPresident(session);
+  const isManager = sessionType === 'manager';
+  const isMember = sessionType === 'member';
+  const councilId = getSessionCouncilId(session);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
@@ -33,9 +36,9 @@ export default function Navbar({ session }) {
               <NavLink to="/files" label="File Wall" current={location.pathname} icon={<Files size={12} />} />
             </>
           )}
-          {session?.type === 'member' && (
+          {isMember && (
             <>
-              <NavLink to={`/council/${session.councilId}`} label="My Council" current={location.pathname} icon={<LayoutGrid size={12} />} />
+              <NavLink to={`/council/${councilId}`} label="My Council" current={location.pathname} icon={<LayoutGrid size={12} />} />
               <NavLink to="/calendar" label="Execution Calendar" current={location.pathname} icon={<Calendar size={12} />} />
               <NavLink to="/commons" label="Commons" current={location.pathname} icon={<Globe size={12} />} />
               <NavLink to="/files" label="File Wall" current={location.pathname} icon={<Files size={12} />} />

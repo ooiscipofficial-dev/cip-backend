@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import StatusPill from '../../components/ui/StatusPill';
-import { Pencil, ArrowLeft, MessageSquare, Star, EyeOff, Calendar, Repeat, Clock, CheckSquare, AlertTriangle, ShieldCheck, XCircle, RotateCcw, Trash2 } from 'lucide-react';
+import { Pencil, ArrowLeft, MessageSquare, Star, Calendar, Repeat, Clock, CheckSquare, AlertTriangle, ShieldCheck, XCircle, RotateCcw, Trash2 } from 'lucide-react';
 export default function InitiativeDetail({
   initiative, onBack, onEdit, isManager, isPresident,
   onAddComment, onApprove, onReject, onMarkExecution, onRevert, onDeleteComment

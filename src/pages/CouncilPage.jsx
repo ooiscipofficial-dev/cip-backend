@@ -17,10 +17,10 @@ import DriveSection from '../components/council/DriveSection';
 import { COUNCILS_DATA } from '../lib/mockData';
 import {
   getCouncilData, saveInitiative, deleteInitiative, saveCouncilInfo,
-  rejectInitiative, markInitiativeSuccessful, toggleSuccessVisibility,
+  rejectInitiative,
   addManagerComment, calculateImpactScore, markInitiativeExecution, approveInitiative, revertToPending, deleteManagerComment
 } from '../lib/dataStore';
-import { isPresident as checkPresident, isManager as checkManager } from '../lib/authStore';
+import { isPresident as checkPresident, isManager as checkManager, isOwnCouncilMember } from '../lib/authStore';
 import { LayoutGrid, Calendar, Settings, Plus, Layout, HardDrive, Globe, TrendingUp } from 'lucide-react';
 import CommonsView from '../components/council/CommonsView';
 import StrategicManager from '../components/council/StrategicManager';
@@ -80,13 +80,15 @@ export default function CouncilPage({ session }) {
     /** @type {Initiative | null} */ (null)
   );
 
-  const isPresidentUser = checkPresident(session) && session?.councilId === councilId;
+  const isCouncilMember = isOwnCouncilMember(session, councilId);
+  const isPresidentUser = checkPresident(session) && isCouncilMember;
   const managerView = checkManager(session);
-  const canEdit = isPresidentUser || managerView;
+  const canManageInitiatives = isCouncilMember || managerView;
+  const canManageCouncilInfo = isPresidentUser || managerView;
 
   const handleSaveInitiative = async (formData) => {
-      if (!canEdit) {
-        alert("Only the council president or a manager can edit initiatives.");
+      if (!canManageInitiatives) {
+        alert("Only this council's members or a manager can edit initiatives.");
         return;
       }
       const success = await saveInitiative(councilId, formData);
@@ -98,7 +100,7 @@ export default function CouncilPage({ session }) {
     };
 
   async function handleDelete(initiativeId) {
-    if (!canEdit) return;
+    if (!canManageInitiatives) return;
     // 1. Confirm with the user (optional but recommended)
     if (!window.confirm("Are you sure you want to delete this initiative?")) return;
 
@@ -121,6 +123,11 @@ export default function CouncilPage({ session }) {
 
 
   async function handleApprove(initiativeId, reviewData) {
+    if (!managerView) {
+      alert("Only managers can approve initiatives.");
+      return;
+    }
+
     try {
       // 1. Run the backend logic
       await approveInitiative(councilId, initiativeId, reviewData);
@@ -154,6 +161,11 @@ export default function CouncilPage({ session }) {
   }
 
   async function handleReject(initiativeId, feedbackData) {
+    if (!managerView) {
+      alert("Only managers can reject initiatives.");
+      return;
+    }
+
     try {
       // 1. Call the dataStore function
       await rejectInitiative(councilId, initiativeId, feedbackData);
@@ -170,6 +182,11 @@ export default function CouncilPage({ session }) {
 
 
   async function handleAddComment(comment) {
+    if (!managerView) {
+      alert("Only managers can comment on initiatives.");
+      return;
+    }
+
     if (!selectedInitiative) return;
 
     // 1. Wait for the comment to be saved to the database
@@ -192,28 +209,6 @@ export default function CouncilPage({ session }) {
 
     if (updated) {
       setSelectedInitiative(updated);
-    }
-  }
-
-// --- ADD THESE HANDLERS BACK ---
-
-  async function handleMarkSuccessful(initiative) {
-    try {
-      await markInitiativeSuccessful(councilId, initiative.id);
-      await refresh();
-      // Update the local detail view
-      setSelectedInitiative({ ...initiative, isSuccessful: true });
-    } catch (err) {
-      console.error("Failed to mark successful:", err);
-    }
-  }
-
-  async function handleToggleVisibility(initiativeId) {
-    try {
-      await toggleSuccessVisibility(councilId, initiativeId);
-      await refresh();
-    } catch (err) {
-      console.error("Failed to toggle visibility:", err);
     }
   }
 
@@ -268,7 +263,7 @@ export default function CouncilPage({ session }) {
   }
 
   async function handleSaveInfo(info) {
-    if (!canEdit) return;
+    if (!canManageCouncilInfo) return;
 
     const result = await saveCouncilInfo(councilId, {
       ...info,
@@ -336,7 +331,7 @@ export default function CouncilPage({ session }) {
             <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
               Impact Score: {impactScore}
             </span>
-            {canEdit && !showForm && !selectedInitiative && tab === 'initiatives' && (
+            {canManageInitiatives && !showForm && !selectedInitiative && tab === 'initiatives' && (
               <button
                 onClick={() => { setEditingInitiative(null); setShowForm(true); }}
                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"
@@ -354,7 +349,7 @@ export default function CouncilPage({ session }) {
           <TabBtn id="padlet" active={tab} setTab={setTab} icon={<Layout size={12} />} label="Padlet" />
           <TabBtn id="drive" active={tab} setTab={setTab} icon={<HardDrive size={12} />} label="Drive" />
           <TabBtn id="info" active={tab} setTab={setTab} icon={<Settings size={12} />} label="Info" />
-          {managerView && <TabBtn id="strategy" active={tab} setTab={setTab} icon={<TrendingUp size={12} />} label="Strategy" />}
+          {canManageCouncilInfo && <TabBtn id="strategy" active={tab} setTab={setTab} icon={<TrendingUp size={12} />} label="Strategy" />}
         </div>
 
         {tab === 'initiatives' && (
@@ -372,27 +367,23 @@ export default function CouncilPage({ session }) {
                 onRevert={handleRevert}
                 initiative={selectedInitiative}
                 onDeleteComment={handleDeleteComment}
-                onReject={handleReject} 
+                onReject={managerView ? handleReject : null} 
                 onBack={() => setSelectedInitiative(null)}
-                onEdit={canEdit ? (ini) => { setEditingInitiative(ini); setShowForm(true); setSelectedInitiative(null); } : null}
+                onEdit={canManageInitiatives ? (ini) => { setEditingInitiative(ini); setShowForm(true); setSelectedInitiative(null); } : null}
                 isManager={managerView}
                 isPresident={isPresidentUser}
-                onAddComment={handleAddComment}
+                onAddComment={managerView ? handleAddComment : null}
                 /* --- THESE MUST BE HERE FOR THE NETWORK CALLS TO WORK --- */
-                onApprove={handleApprove} 
+                onApprove={managerView ? handleApprove : null} 
                 onMarkExecution={handleMarkExecution}
                 /* -------------------------------------------------------- */
-
-                onMarkSuccessful={handleMarkSuccessful}
-                onToggleVisibility={handleToggleVisibility}
-                
               />
             ) : (
               <InitiativeList
                 initiatives={councilData.initiatives || []}
                 pendingList={councilData.pendingList}
                 onSelect={setSelectedInitiative}
-                onDelete={canEdit ? handleDelete : null}
+                onDelete={canManageInitiatives ? handleDelete : null}
                 
                 /* List also needs these for the "Quick Approve" buttons */
                 onApprove={managerView ? handleApprove : null}
@@ -415,7 +406,7 @@ export default function CouncilPage({ session }) {
               // Pass the raw type; we will handle capitalization in the component
               type: ini.type 
             }))} 
-            onAddInitiative={canEdit ? (dateStr) => {
+            onAddInitiative={canManageInitiatives ? (dateStr) => {
               setEditingInitiative({ executionDate: dateStr });
               setShowForm(true);
               setTab('initiatives'); // optional: switch to initiatives tab to see the form
@@ -436,7 +427,7 @@ export default function CouncilPage({ session }) {
           <PadletTabs
             council={mergedCouncil}
             councilInfo={councilInfo}
-            canManagePadlets={canEdit}
+            canManagePadlets={canManageCouncilInfo}
             onPadletsUpdated={refresh}
           />
         )}
@@ -453,13 +444,13 @@ export default function CouncilPage({ session }) {
             council={council}
             info={councilInfo}
             onSave={handleSaveInfo}
-            canEdit={canEdit}
+            canEdit={canManageCouncilInfo}
             isPresident={isPresidentUser}
             isManager={managerView}
           />
         )}
 
-        {managerView && tab === 'strategy' && (
+        {canManageCouncilInfo && tab === 'strategy' && (
           <StrategicManager 
             councilId={councilId} 
             data={councilData} 
