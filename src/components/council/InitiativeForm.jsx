@@ -15,14 +15,25 @@ const STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed'];
 
 
 export default function InitiativeForm({ councilId, council, initial, onSave, onCancel, isManager }) {
+  function normalizeLead(lead = {}) {
+    const type = lead.type === 'council' ? 'council' : 'individual';
+    return {
+      ...INITIATIVE_TEMPLATE.lead,
+      ...lead,
+      type,
+      mainStudents: Array.isArray(lead.mainStudents) ? lead.mainStudents : [],
+    };
+  }
   
   const [form, setForm] = useState(initial ? {
     ...INITIATIVE_TEMPLATE,
     ...initial,
+    lead: normalizeLead(initial.lead),
     contributors: initial.contributors?.length ? initial.contributors : [{ name: '', role: '', class: '', section: '', imageUrl: '' }],
     execution: initial.execution?.length ? initial.execution : INITIATIVE_TEMPLATE.execution,
   } : {
     ...INITIATIVE_TEMPLATE,
+    lead: normalizeLead(INITIATIVE_TEMPLATE.lead),
     contributors: [{ name: '', role: '', class: '', section: '', imageUrl: '' }],
     execution: INITIATIVE_TEMPLATE.execution.map(e => ({ ...e })),
   });
@@ -45,6 +56,7 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
     setForm({
       ...INITIATIVE_TEMPLATE,
       ...initial,
+      lead: normalizeLead(initial.lead),
       contributors: initial.contributors?.length 
         ? initial.contributors 
         : [{ name: '', role: '', class: '', section: '', imageUrl: '' }],
@@ -56,6 +68,7 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
     // If initial is null (New Initiative), reset to blank template
     setForm({
       ...INITIATIVE_TEMPLATE,
+      lead: normalizeLead(INITIATIVE_TEMPLATE.lead),
       contributors: [{ name: '', role: '', class: '', section: '', imageUrl: '' }],
       execution: INITIATIVE_TEMPLATE.execution.map(e => ({ ...e })),
     });
@@ -95,6 +108,49 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
     });
   }
 
+  function setLeadType(type) {
+    setForm(f => ({
+      ...f,
+      lead: {
+        ...normalizeLead(f.lead),
+        type,
+        role: type === 'council' ? 'Council Initiative Lead' : (f.lead?.role || 'Student Initiative Lead'),
+      },
+    }));
+  }
+
+  function addLeadStudent() {
+    setForm(f => ({
+      ...f,
+      lead: {
+        ...normalizeLead(f.lead),
+        mainStudents: [
+          ...(f.lead?.mainStudents || []),
+          { name: '', role: 'Main Student Lead', class: '', section: '', imageUrl: '' },
+        ],
+      },
+    }));
+  }
+
+  function removeLeadStudent(idx) {
+    setForm(f => ({
+      ...f,
+      lead: {
+        ...normalizeLead(f.lead),
+        mainStudents: (f.lead?.mainStudents || []).filter((_, i) => i !== idx),
+      },
+    }));
+  }
+
+  function updateLeadStudent(idx, field, value) {
+    setForm(f => {
+      const lead = normalizeLead(f.lead);
+      const arr = [...lead.mainStudents];
+      arr[idx] = { ...arr[idx], [field]: value };
+      return { ...f, lead: { ...lead, mainStudents: arr } };
+    });
+  }
+
   function updatePhase(idx, field, value) {
     setForm(f => {
       const arr = [...f.execution];
@@ -127,8 +183,25 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
     
     const id = form.id || generateInitiativeId(councilId, form.title, Date.now());
     
-    // This will now look for 'onSave' in the outer scope (the component props)
-    onSave({ ...form, id });
+    const lead = normalizeLead(form.lead);
+    const normalizedLead = lead.type === 'council'
+      ? {
+          ...lead,
+          name: '',
+          class: '',
+          section: '',
+          imageUrl: '',
+          role: lead.role || 'Council Initiative Lead',
+          mainStudents: lead.mainStudents.filter(student => student?.name?.trim()),
+        }
+      : {
+          ...lead,
+          type: 'individual',
+          councilName: '',
+          mainStudents: [],
+        };
+
+    onSave({ ...form, id, lead: normalizedLead });
   }
 
   const showcasePadlet = council?.padlets?.showcase;
@@ -206,15 +279,63 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
 
         {/* Lead */}
         <Section title="Initiative Lead">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input value={form.lead?.name || ''} onChange={e => setField('lead.name', e.target.value)} placeholder="Full name" />
-            <Input value={form.lead?.role || ''} onChange={e => setField('lead.role', e.target.value)} placeholder="Role (e.g. Student Initiative Lead)" />
-            <Input value={form.lead?.class || ''} onChange={e => setField('lead.class', e.target.value)} placeholder="Grade / Class" />
-            <Input value={form.lead?.section || ''} onChange={e => setField('lead.section', e.target.value)} placeholder="Section (e.g. A, B)" />
-            <div className="sm:col-span-2">
-              <Label>Profile Image URL (optional)</Label>
-              <Input value={form.lead?.imageUrl || ''} onChange={e => setField('lead.imageUrl', e.target.value)} placeholder="https://..." />
+          <div className="space-y-4">
+            <div className="inline-flex rounded-lg border border-border bg-background p-1">
+              <button
+                type="button"
+                onClick={() => setLeadType('individual')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${form.lead?.type !== 'council' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Individual
+              </button>
+              <button
+                type="button"
+                onClick={() => setLeadType('council')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${form.lead?.type === 'council' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Council
+              </button>
             </div>
+
+            {form.lead?.type === 'council' ? (
+              <div className="space-y-3">
+                <Input value={form.lead?.councilName || ''} onChange={e => setField('lead.councilName', e.target.value)} placeholder="Council name" />
+                <div className="space-y-3">
+                  {(form.lead?.mainStudents || []).map((student, i) => (
+                    <div key={i} className="border border-border rounded-xl p-3 bg-background space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">Main Student {i + 1}</span>
+                        <button type="button" onClick={() => removeLeadStudent(i)} className="text-muted-foreground hover:text-red-500 transition-colors">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input value={student.name || ''} onChange={e => updateLeadStudent(i, 'name', e.target.value)} placeholder="Full name" />
+                        <Input value={student.role || ''} onChange={e => updateLeadStudent(i, 'role', e.target.value)} placeholder="Role" />
+                        <Input value={student.class || ''} onChange={e => updateLeadStudent(i, 'class', e.target.value)} placeholder="Grade" />
+                        <Input value={student.section || ''} onChange={e => updateLeadStudent(i, 'section', e.target.value)} placeholder="Section" />
+                      </div>
+                      <Input value={student.imageUrl || ''} onChange={e => updateLeadStudent(i, 'imageUrl', e.target.value)} placeholder="Profile image URL (optional)" />
+                    </div>
+                  ))}
+                  <button type="button" onClick={addLeadStudent}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
+                    <Plus size={12} /> Add Main Student
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input value={form.lead?.name || ''} onChange={e => setField('lead.name', e.target.value)} placeholder="Full name" />
+                <Input value={form.lead?.role || ''} onChange={e => setField('lead.role', e.target.value)} placeholder="Role (e.g. Student Initiative Lead)" />
+                <Input value={form.lead?.class || ''} onChange={e => setField('lead.class', e.target.value)} placeholder="Grade / Class" />
+                <Input value={form.lead?.section || ''} onChange={e => setField('lead.section', e.target.value)} placeholder="Section (e.g. A, B)" />
+                <div className="sm:col-span-2">
+                  <Label>Profile Image URL (optional)</Label>
+                  <Input value={form.lead?.imageUrl || ''} onChange={e => setField('lead.imageUrl', e.target.value)} placeholder="https://..." />
+                </div>
+              </div>
+            )}
           </div>
         </Section>
 

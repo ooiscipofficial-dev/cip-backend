@@ -56,6 +56,10 @@ export default function PDFReport({ onClose, storeData }) {
                   ${ini.isSuccessful ? '<span class="success-badge" style="margin-left:8px;">✓ Successful</span>' : ''}
                   <br/><span style="font-size:11px;color:#6b7280;">${ini.type === 'continuous' ? 'Continuous' : 'One-Time'}</span>
                   ${ini.summary ? `<p>${ini.summary}</p>` : ''}
+                  <p style="margin-bottom:2px;font-weight:600;font-size:11px;">Initiative Lead: ${ini.lead || 'Unassigned'}${ini.leadType === 'council' ? ' (Council)' : ''}</p>
+                  ${(ini.leadStudents || []).filter(s => s && s.name).length > 0 ? `
+                    ${ini.leadStudents.filter(s => s && s.name).map(s => `<div class="contributor">${s.name} - ${s.role || 'Main Student'}</div>`).join('')}
+                  ` : ''}
                   
                   ${(ini.contributors || []).length > 0 ? `
                     <p style="margin-bottom:2px;font-weight:600;font-size:11px;">Contributors:</p>

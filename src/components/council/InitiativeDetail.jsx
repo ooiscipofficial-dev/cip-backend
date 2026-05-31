@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import StatusPill from '../../components/ui/StatusPill';
-import { Pencil, ArrowLeft, MessageSquare, Star, Calendar, Repeat, Clock, CheckSquare, AlertTriangle, ShieldCheck, XCircle, RotateCcw, Trash2 } from 'lucide-react';
+import { Pencil, ArrowLeft, MessageSquare, Star, Calendar, Repeat, Clock, CheckSquare, AlertTriangle, ShieldCheck, XCircle, RotateCcw, Trash2, Users } from 'lucide-react';
 export default function InitiativeDetail({
   initiative, onBack, onEdit, isManager, isPresident,
   onAddComment, onApprove, onReject, onMarkExecution, onRevert, onDeleteComment
@@ -236,25 +236,48 @@ export default function InitiativeDetail({
       )}
 
       {/* Lead */}
-      {initiative.lead?.name && (
+      {(initiative.lead?.name || initiative.lead?.councilName) && (
         <Section title="Initiative Lead">
-          <div className="flex items-center gap-3">
-            {initiative.lead.imageUrl ? (
-              <img src={initiative.lead.imageUrl} alt={initiative.lead.name}
-                className="w-10 h-10 rounded-full object-cover border border-border flex-shrink-0" />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-semibold flex-shrink-0">
-                {initiative.lead.name[0]}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              {initiative.lead.type === 'council' ? (
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                  <Users size={17} />
+                </div>
+              ) : initiative.lead.imageUrl ? (
+                <img src={initiative.lead.imageUrl} alt={initiative.lead.name}
+                  className="w-10 h-10 rounded-full object-cover border border-border flex-shrink-0" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                  {initiative.lead.name[0]}
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-medium">{initiative.lead.type === 'council' ? initiative.lead.councilName : initiative.lead.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {initiative.lead.type === 'council' ? (initiative.lead.role || 'Council Initiative Lead') : initiative.lead.role}
+                  {initiative.lead.type !== 'council' && initiative.lead.class && ` Â· ${initiative.lead.class}`}
+                  {initiative.lead.type !== 'council' && initiative.lead.section && ` Â· Section ${initiative.lead.section}`}
+                </p>
+              </div>
+            </div>
+            {initiative.lead.type === 'council' && initiative.lead.mainStudents?.filter(s => s.name).length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {initiative.lead.mainStudents.filter(s => s.name).map((student, i) => (
+                  <div key={i} className="flex items-center gap-2 rounded-lg border border-border bg-background p-2">
+                    {student.imageUrl ? (
+                      <img src={student.imageUrl} alt={student.name} className="w-7 h-7 rounded-full object-cover flex-shrink-0 border border-border" />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-xs font-semibold flex-shrink-0">{student.name[0]}</div>
+                    )}
+                    <div>
+                      <p className="text-sm font-medium">{student.name}</p>
+                      <p className="text-xs text-muted-foreground">{student.role || 'Main Student'}{student.class && ` Â· ${student.class}`}{student.section && ` Sec. ${student.section}`}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
-            <div>
-              <p className="text-sm font-medium">{initiative.lead.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {initiative.lead.role}
-                {initiative.lead.class && ` · ${initiative.lead.class}`}
-                {initiative.lead.section && ` · Section ${initiative.lead.section}`}
-              </p>
-            </div>
           </div>
         </Section>
       )}

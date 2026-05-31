@@ -37,7 +37,16 @@ export async function setMemberCredentials(councilId, creds) {
 export const INITIATIVE_TEMPLATE = {
   id: "", title: "", description: "", objectives: "", expectedOutcomes: "", summary: "",
   initiativeType: "one-time", executionDate: "", executedOnTime: null, successNote: "",
-  lead: { name: "", role: "Student Initiative Lead", class: "", section: "", imageUrl: "" },
+  lead: {
+    type: "individual",
+    councilName: "",
+    name: "",
+    role: "Student Initiative Lead",
+    class: "",
+    section: "",
+    imageUrl: "",
+    mainStudents: [],
+  },
   contributors: [],
   execution: [
     { phase: "Planning",            note: "", status: "Not Started" },

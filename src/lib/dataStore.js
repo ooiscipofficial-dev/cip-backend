@@ -113,10 +113,13 @@ export function buildPDFReport(councils, storeData) {
       initiatives: initiatives.map(ini => ({
         title: ini.title || "Untitled Project",
         summary: ini.summary || "No description provided.",
-        lead: ini.lead?.name || "Unassigned",
-        role: ini.lead?.role || "Member",
+        lead: ini.lead?.type === 'council' ? (ini.lead?.councilName || "Council Lead") : (ini.lead?.name || "Unassigned"),
+        leadType: ini.lead?.type || "individual",
+        leadStudents: ini.lead?.mainStudents || [],
+        role: ini.lead?.role || (ini.lead?.type === 'council' ? "Council Initiative Lead" : "Member"),
         type: ini.initiativeType || 'one-time',
         status: ini.isSuccessful ? "Completed Successfully" : "In Progress",
+        contributors: ini.contributors || [],
         managerComments: ini.managerComments || [],
       })),
 
