@@ -272,7 +272,7 @@ export default function InitiativeDetail({
                     )}
                     <div>
                       <p className="text-sm font-medium">{student.name}</p>
-                      <p className="text-xs text-muted-foreground">{student.role || 'Main Student'}{student.class && ` Â· ${student.class}`}{student.section && ` Sec. ${student.section}`}</p>
+                      <p className="text-xs text-muted-foreground">{student.role || 'Main Student'}{student.class && ` Â· ${student.class}`}{student.section && ` ${student.section}`}</p>
                     </div>
                   </div>
                 ))}
@@ -295,7 +295,7 @@ export default function InitiativeDetail({
                 )}
                 <div>
                   <p className="text-sm font-medium">{c.name}</p>
-                  <p className="text-xs text-muted-foreground">{c.role}{c.class && ` · ${c.class}`}{c.section && ` Sec. ${c.section}`}</p>
+                  <p className="text-xs text-muted-foreground">{c.role}{c.class && ` ${c.class}`}{c.section && ` . ${c.section}`}</p>
                 </div>
               </div>
             ))}
