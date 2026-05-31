@@ -256,8 +256,8 @@ export default function InitiativeDetail({
                 <p className="text-sm font-medium">{initiative.lead.type === 'council' ? initiative.lead.councilName : initiative.lead.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {initiative.lead.type === 'council' ? (initiative.lead.role || 'Council Initiative Lead') : initiative.lead.role}
-                  {initiative.lead.type !== 'council' && initiative.lead.class && ` Â· ${initiative.lead.class}`}
-                  {initiative.lead.type !== 'council' && initiative.lead.section && ` Â· Section ${initiative.lead.section}`}
+                  {initiative.lead.type !== 'council' && initiative.lead.class && `· ${initiative.lead.class}`}
+                  {initiative.lead.type !== 'council' && initiative.lead.section && `· Section ${initiative.lead.section}`}
                 </p>
               </div>
             </div>
@@ -272,7 +272,7 @@ export default function InitiativeDetail({
                     )}
                     <div>
                       <p className="text-sm font-medium">{student.name}</p>
-                      <p className="text-xs text-muted-foreground">{student.role || 'Main Student'}{student.class && ` Â· ${student.class}`}{student.section && ` ${student.section}`}</p>
+                      <p className="text-xs text-muted-foreground">{student.role || 'Main Student'}{student.class && ` · ${student.class}`}{student.section && ` · ${student.section}`}</p>
                     </div>
                   </div>
                 ))}
