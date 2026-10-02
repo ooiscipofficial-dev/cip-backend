@@ -2,6 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { INITIATIVE_TEMPLATE } from '../../lib/mockData';
 import { generateInitiativeId, hasExecutionDateConflict } from '../../lib/dataStore';
 import { X, Plus, Trash2, ExternalLink, AlertTriangle } from 'lucide-react';
+import {
+  MDXEditor, headingsPlugin, listsPlugin, quotePlugin, thematicBreakPlugin,
+  markdownShortcutPlugin, linkPlugin, imagePlugin, tablePlugin, codeBlockPlugin,
+  codeMirrorPlugin, toolbarPlugin, UndoRedo, BoldItalicUnderlineToggles,
+  CreateLink, InsertImage, InsertTable, ListsToggle, BlockTypeSelect, CodeToggle,
+} from '@mdxeditor/editor';
+import '@mdxeditor/editor/style.css';
 
 const STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed'];
 /**
@@ -40,6 +47,7 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
 
   const [dateConflict, setDateConflict] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [detailsEditorOpen, setDetailsEditorOpen] = useState(false);
   const isSubmitting = useRef(false);
   console.log("PROPS RECEIVED:", { councilId, onSave, form });
   function setField(path, value) {
@@ -259,7 +267,19 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
             </div>
             <div className="sm:col-span-2">
               <Label>Description</Label>
-              <Textarea value={form.description} onChange={e => setField('description', e.target.value)} placeholder="Describe this initiative in detail..." rows={3} />
+              <Textarea value={form.description} onChange={e => setField('description', e.target.value.slice(0, 120))} placeholder="A short overview of this initiative..." rows={2} maxLength={120} />
+              <p className="mt-1 text-[11px] text-muted-foreground">{form.description.length}/120 characters</p>
+            </div>
+            <div className="sm:col-span-2 rounded-xl border border-border bg-muted/20 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <Label>Additional Information</Label>
+                  <p className="text-xs text-muted-foreground">Add full details, links, images, tables, and rich Markdown content.</p>
+                </div>
+                <button type="button" onClick={() => setDetailsEditorOpen(true)} className="rounded-lg bg-foreground px-3 py-2 text-xs font-medium text-background hover:opacity-90">
+                  {form.detailsMarkdown?.trim() ? 'Edit information' : 'Add information'}
+                </button>
+              </div>
             </div>
             <div>
               <Label>Objectives</Label>
@@ -462,6 +482,24 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
           </button>
         </div>
       </form>
+
+      {detailsEditorOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="flex h-[min(760px,calc(100vh-2rem))] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+              <div><h3 className="font-semibold">Additional Information</h3><p className="mt-1 text-xs text-muted-foreground">Use Markdown for the full public-facing initiative story.</p></div>
+              <button type="button" onClick={() => setDetailsEditorOpen(false)} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Close editor"><X size={18} /></button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-5 md:p-6">
+              <MDXEditor markdown={form.detailsMarkdown || ''} onChange={(markdown) => setField('detailsMarkdown', markdown)} contentEditableClassName="prose prose-sm dark:prose-invert max-w-none min-h-[420px] rounded-b-xl px-4 py-3 focus:outline-none" plugins={[
+                headingsPlugin(), listsPlugin(), quotePlugin(), thematicBreakPlugin(), markdownShortcutPlugin(), linkPlugin(), imagePlugin(), tablePlugin(), codeBlockPlugin({ defaultCodeBlockLanguage: 'txt' }), codeMirrorPlugin(),
+                toolbarPlugin({ toolbarContents: () => <><UndoRedo /><BlockTypeSelect /><BoldItalicUnderlineToggles /><CodeToggle /><ListsToggle /><CreateLink /><InsertImage /><InsertTable /></> }),
+              ]} />
+            </div>
+            <div className="flex justify-end border-t border-border px-5 py-3"><button type="button" onClick={() => setDetailsEditorOpen(false)} className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background">Done</button></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -486,9 +524,9 @@ function Input({ value, onChange, placeholder, required, type = 'text' }) {
   );
 }
 
-function Textarea({ value, onChange, placeholder, rows = 3 }) {
+function Textarea({ value, onChange, placeholder, rows = 3, maxLength }) {
   return (
-    <textarea value={value} onChange={onChange} placeholder={placeholder} rows={rows}
+    <textarea value={value} onChange={onChange} placeholder={placeholder} rows={rows} maxLength={maxLength}
       className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring" />
   );
 }

@@ -77,7 +77,7 @@ export default function ManagerDashboard({ session }) {
               onClick={() => setShowCommons(true)}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-lg hover:bg-muted transition-colors"
             >
-              <Settings size={12} /> Configure Commons
+              <Settings size={12} /> Configure Global Boards
             </button>
             <button
               onClick={() => setShowCreds(true)}
@@ -212,7 +212,7 @@ export default function ManagerDashboard({ session }) {
                 onClick={() => setShowCommons(true)}
                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"
               >
-                <Settings size={12} /> Configure Board
+                <Settings size={12} /> Configure Global Boards
               </button>
             </div>
             <CommonsView />

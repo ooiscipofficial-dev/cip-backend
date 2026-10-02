@@ -228,9 +228,9 @@ export const councilApi = {
 
   async getSystemSettings() {
     const res = await fetch(`${API_BASE}/system/settings`);
-    if (!res.ok) return { commonsPadlet: "" };
+    if (!res.ok) return { commonsPadlet: "", announcementsPadlet: "" };
     const data = await res.json();
-    return data.settings || { commonsPadlet: "" };
+    return data.settings || { commonsPadlet: "", announcementsPadlet: "" };
   },
 
   async saveSystemSettings(settings) {

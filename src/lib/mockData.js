@@ -35,7 +35,7 @@ export async function setMemberCredentials(councilId, creds) {
 
 // Keep this template for the UI when creating new initiatives
 export const INITIATIVE_TEMPLATE = {
-  id: "", title: "", description: "", objectives: "", expectedOutcomes: "", summary: "",
+  id: "", title: "", description: "", detailsMarkdown: "", objectives: "", expectedOutcomes: "", summary: "",
   registrationFormUrl: "",
   initiativeType: "one-time", executionDate: "", executedOnTime: null, successNote: "",
   lead: {

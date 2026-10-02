@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { getSystemSettings, saveSystemSettings } from '../../lib/dataStore';
-import { X, Globe, Save, Loader2 } from 'lucide-react';
+import { X, Globe, Bell, Save, Loader2 } from 'lucide-react';
 import { toPadletEmbedUrl } from '../../lib/padlet';
 
 export default function CommonsManager({ onClose }) {
   const [url, setUrl] = useState('');
+  const [announcementsUrl, setAnnouncementsUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -12,6 +13,7 @@ export default function CommonsManager({ onClose }) {
     async function load() {
       const settings = await getSystemSettings();
       setUrl(settings.commonsPadlet || '');
+      setAnnouncementsUrl(settings.announcementsPadlet || '');
       setLoading(false);
     }
     load();
@@ -20,7 +22,10 @@ export default function CommonsManager({ onClose }) {
   async function handleSave() {
     setSaving(true);
     try {
-      const success = await saveSystemSettings({ commonsPadlet: toPadletEmbedUrl(url) });
+      const success = await saveSystemSettings({
+        commonsPadlet: toPadletEmbedUrl(url),
+        announcementsPadlet: toPadletEmbedUrl(announcementsUrl),
+      });
       if (success) {
         onClose();
       } else {
@@ -40,7 +45,7 @@ export default function CommonsManager({ onClose }) {
         <div className="p-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Globe size={16} className="text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Commons Configuration</h2>
+            <h2 className="text-sm font-semibold">Global Padlet Boards</h2>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-muted rounded-full transition-colors">
             <X size={16} />
@@ -49,16 +54,28 @@ export default function CommonsManager({ onClose }) {
 
         <div className="p-6 space-y-4">
           <p className="text-xs text-muted-foreground">
-            Configure the global Commons Padlet URL. This board will be visible to all student councils under their "Commons" tab.
+            Set shared boards for every council. Give councils Padlet contributor access to let them post competition callouts and announcements.
           </p>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Padlet URL</label>
+            <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Commons Padlet URL</label>
             <input 
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://padlet.com/owner/board-name-s0244emvwv5rchsfwicv"
+              disabled={loading || saving}
+              className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1 text-[10px] uppercase font-bold text-muted-foreground tracking-wider"><Bell size={11} /> Announcements Padlet URL</label>
+            <input
+              type="text"
+              value={announcementsUrl}
+              onChange={(e) => setAnnouncementsUrl(e.target.value)}
+              placeholder="https://padlet.com/owner/announcements-board"
               disabled={loading || saving}
               className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
             />
