@@ -196,6 +196,15 @@ export const councilApi = {
     return (await res.json()).activity || [];
   },
 
+  async getMonthlyActivityAPI(token, month) {
+    const res = await fetch(`${API_BASE}/activity/monthly?month=${encodeURIComponent(month)}`, {
+      headers: { Authorization: `Bearer ${token || ''}` },
+      cache: 'no-store'
+    });
+    if (!res.ok) throw new Error('Failed to load activity audit');
+    return (await res.json()).activity || [];
+  },
+
   async getSystemSettings() {
     const res = await fetch(`${API_BASE}/system/settings`);
     if (!res.ok) return { commonsPadlet: "" };

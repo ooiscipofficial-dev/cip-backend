@@ -106,6 +106,7 @@ export default function CouncilPage({ session }) {
         setShowForm(false);
         setEditingInitiative(null);
       }
+      return success;
     };
 
   async function handleDelete(initiativeId) {

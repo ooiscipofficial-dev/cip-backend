@@ -4,7 +4,6 @@ import Navbar from '../components/layout/Navbar';
 import PDFReport from '../components/manager/PDFReport';
 import YearEndClear from '../components/manager/YearEndClear';
 import MemberCredentials from '../components/manager/MemberCredentials';
-import ActivityAudit from '../components/manager/ActivityAudit';
 import { COUNCILS_DATA } from '../lib/mockData';
 import { getAllCouncilsData, calculateImpactScore } from '../lib/dataStore';
 import { LayoutGrid, FileText, Trash2, ChevronRight, CheckCircle, XCircle, Clock, Download, Key, Loader2, Globe, Settings, TrendingUp, Calendar, History } from 'lucide-react';
@@ -17,7 +16,6 @@ export default function ManagerDashboard({ session }) {
   const [showPDF,   setShowPDF]   = useState(false);
   const [showClear, setShowClear] = useState(false);
   const [showCreds, setShowCreds] = useState(false);
-  const [showActivity, setShowActivity] = useState(false);
   const [showCommons, setShowCommons] = useState(false);
   const [storeData, setStoreData] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -87,9 +85,9 @@ export default function ManagerDashboard({ session }) {
             >
               <Key size={12} /> Member Credentials
             </button>
-            <button onClick={() => setShowActivity(true)} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-lg hover:bg-muted transition-colors">
+            <Link to="/manager/activity" className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-lg hover:bg-muted transition-colors">
               <History size={12} /> Activity Audit
-            </button>
+            </Link>
             
             <button
               onClick={() => setShowPDF(true)}
@@ -246,7 +244,6 @@ export default function ManagerDashboard({ session }) {
       {showPDF   && <PDFReport councils={councils} storeData={storeData} onClose={() => setShowPDF(false)} />}
       {showClear && <YearEndClear onClose={() => setShowClear(false)} />}
       {showCreds && <MemberCredentials storeData={storeData} session={session} onClose={() => setShowCreds(false)} onRefresh={loadData} />}
-      {showActivity && <ActivityAudit session={session} onClose={() => setShowActivity(false)} />}
       {showCommons && <CommonsManager onClose={() => setShowCommons(false)} />}
     </div>
   );

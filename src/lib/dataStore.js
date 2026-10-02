@@ -485,6 +485,10 @@ export async function trackActivity(activity) {
 export async function getActivity(token) {
   return await councilApi.getActivityAPI(token);
 }
+
+export async function getMonthlyActivity(token, month) {
+  return await councilApi.getMonthlyActivityAPI(token, month);
+}
 // lib/dataStore.js
 
 // lib/dataStore.js

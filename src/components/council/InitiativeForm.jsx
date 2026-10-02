@@ -1,4 +1,4 @@
-import { useState, useEffect  } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { INITIATIVE_TEMPLATE } from '../../lib/mockData';
 import { generateInitiativeId, hasExecutionDateConflict } from '../../lib/dataStore';
 import { X, Plus, Trash2, ExternalLink, AlertTriangle } from 'lucide-react';
@@ -39,6 +39,8 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
   });
 
   const [dateConflict, setDateConflict] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const isSubmitting = useRef(false);
   console.log("PROPS RECEIVED:", { councilId, onSave, form });
   function setField(path, value) {
     setForm(f => {
@@ -177,9 +179,9 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
 
 
 // To this:
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (dateConflict) return;
+    if (dateConflict || isSubmitting.current) return;
 
     const registrationFormUrl = form.registrationFormUrl?.trim() || '';
     if (registrationFormUrl) {
@@ -214,7 +216,14 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
           mainStudents: [],
         };
 
-    onSave({ ...form, id, registrationFormUrl, lead: normalizedLead });
+    isSubmitting.current = true;
+    setIsSaving(true);
+    try {
+      await onSave({ ...form, id, registrationFormUrl, lead: normalizedLead });
+    } finally {
+      isSubmitting.current = false;
+      setIsSaving(false);
+    }
   }
 
   const showcasePadlet = council?.padlets?.showcase;
@@ -447,9 +456,9 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
             className="flex-1 px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors">
             Cancel
           </button>
-          <button type="submit" disabled={dateConflict}
+          <button type="submit" disabled={dateConflict || isSaving}
             className="flex-1 px-4 py-2 text-sm font-medium bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed">
-            {initial?.id ? 'Update Initiative' : 'Create Initiative'}
+            {isSaving ? 'Saving…' : initial?.id ? 'Update Initiative' : 'Create Initiative'}
           </button>
         </div>
       </form>

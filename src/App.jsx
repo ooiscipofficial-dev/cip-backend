@@ -6,6 +6,7 @@ import CouncilPage from '../src/pages/CouncilPage';
 import Commons from '../src/pages/Commons';
 import CommonFileWall from '../src/pages/CommonFileWall';
 import GlobalCalendarPage from '../src/pages/GlobalCalendarPage';
+import ActivityAuditPage from '../src/pages/ActivityAuditPage';
 import { getTheme } from '../src/lib/dataStore';
 
 if (getTheme() === 'dark') document.documentElement.classList.add('dark');
@@ -40,6 +41,12 @@ function App() {
         <Route path="/manager" element={
           <RequireAuth allowedTypes={['manager']}>
             {(session) => <ManagerDashboard session={session} />}
+          </RequireAuth>
+        } />
+
+        <Route path="/manager/activity" element={
+          <RequireAuth allowedTypes={['manager']}>
+            {(session) => <ActivityAuditPage session={session} />}
           </RequireAuth>
         } />
 
