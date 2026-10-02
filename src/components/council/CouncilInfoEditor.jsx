@@ -11,6 +11,7 @@ export default function CouncilInfoEditor({ council, info, onSave, canEdit }) {
   const [form, setForm] = useState({
     mission: storedInfo.mission || council.mission || '',
     homepage: storedInfo.homepage || council.homepage || '',
+    feedbackFormUrl: storedInfo.feedbackFormUrl || council.feedbackFormUrl || '',
     achievement: storedInfo.achievement || council.achievement || '',
     mainProjectTitle: storedProject.title || council.mainProject?.title || '',
     mainProjectProgress: storedProject.progress ?? council.mainProject?.progress ?? 0,
@@ -24,6 +25,7 @@ export default function CouncilInfoEditor({ council, info, onSave, canEdit }) {
       setForm({
         mission: nextInfo.mission || council.mission || '',
         homepage: nextInfo.homepage || council.homepage || '',
+        feedbackFormUrl: nextInfo.feedbackFormUrl || council.feedbackFormUrl || '',
         achievement: nextInfo.achievement || council.achievement || '',
         mainProjectTitle: nextProject.title || council.mainProject?.title || '',
         mainProjectProgress: nextProject.progress ?? council.mainProject?.progress ?? 0,
@@ -33,6 +35,15 @@ export default function CouncilInfoEditor({ council, info, onSave, canEdit }) {
   }, [info, council, editing]);
 
   function handleSave() {
+    if (form.feedbackFormUrl) {
+      try {
+        const url = new URL(form.feedbackFormUrl);
+        if (url.protocol !== 'https:' || !(/(^|\.)google\.com$/i.test(url.hostname) || url.hostname === 'forms.gle')) throw new Error();
+      } catch {
+        alert('Please enter a valid HTTPS Google Forms link, or leave the feedback form field empty.');
+        return;
+      }
+    }
     onSave(form);
     setEditing(false);
   }
@@ -40,6 +51,7 @@ export default function CouncilInfoEditor({ council, info, onSave, canEdit }) {
   const display = {
     mission: storedInfo.mission || council.mission,
     homepage: storedInfo.homepage || council.homepage,
+    feedbackFormUrl: storedInfo.feedbackFormUrl || council.feedbackFormUrl,
     achievement: storedInfo.achievement || council.achievement,
     mainProjectTitle: storedProject.title || council.mainProject?.title,
     mainProjectProgress: storedProject.progress ?? council.mainProject?.progress ?? 0,
@@ -114,6 +126,25 @@ export default function CouncilInfoEditor({ council, info, onSave, canEdit }) {
           ) : (
             <p className="text-sm text-muted-foreground">Not set</p>
           )}
+        </Field>
+
+        <Field label="Feedback Google Form" editing={editing}>
+          {editing ? (
+            <input
+              type="url"
+              value={form.feedbackFormUrl}
+              onChange={e => setForm(f => ({ ...f, feedbackFormUrl: e.target.value }))}
+              placeholder="https://docs.google.com/forms/d/e/.../viewform"
+              className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          ) : display.feedbackFormUrl ? (
+            <a href={display.feedbackFormUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+              Open feedback form
+            </a>
+          ) : (
+            <p className="text-sm text-muted-foreground">Not set</p>
+          )}
+          {editing && <p className="mt-1 text-[11px] text-muted-foreground">The public Give Feedback button will open this Google Form through the secure form viewer.</p>}
         </Field>
 
         <Field label="Key Achievement" editing={editing}>
