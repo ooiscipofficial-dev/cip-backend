@@ -18,7 +18,7 @@ import { COUNCILS_DATA } from '../lib/mockData';
 import {
   getCouncilData, saveInitiative, deleteInitiative, saveCouncilInfo,
   rejectInitiative,
-  addManagerComment, calculateImpactScore, markInitiativeExecution, approveInitiative, revertToPending, deleteManagerComment
+  addManagerComment, calculateImpactScore, markInitiativeExecution, approveInitiative, revertToPending, deleteManagerComment, trackActivity
 } from '../lib/dataStore';
 import { isPresident as checkPresident, isManager as checkManager, isOwnCouncilMember } from '../lib/authStore';
 import { LayoutGrid, Calendar, Settings, Plus, Layout, HardDrive, Globe, TrendingUp } from 'lucide-react';
@@ -63,6 +63,13 @@ export default function CouncilPage({ session }) {
       refresh();
     }, [councilId]);
 
+  useEffect(() => {
+    const startedAt = Date.now();
+    const actor = { councilId, actorName: session?.name || session?.username || 'Manager', actorUsername: session?.username || '', actorType: session?.type || 'manager' };
+    trackActivity({ ...actor, action: 'Opened council workspace' });
+    return () => trackActivity({ ...actor, action: 'Active council workspace time', activeSeconds: Math.round((Date.now() - startedAt) / 1000) });
+  }, [councilId, session?.name, session?.username, session?.type]);
+
 
   /**
    * @typedef {{
@@ -91,8 +98,10 @@ export default function CouncilPage({ session }) {
         alert("Only this council's members or a manager can edit initiatives.");
         return;
       }
+      const isNew = !formData.id || !councilData.initiatives?.some(item => item.id === formData.id);
       const success = await saveInitiative(councilId, formData);
       if (success) {
+        await trackActivity({ councilId, initiativeId: formData.id, actorName: session?.name || session?.username || 'Manager', actorUsername: session?.username || '', actorType: session?.type || 'manager', action: isNew ? `Created initiative: ${formData.title}` : `Updated initiative: ${formData.title}` });
         await refresh();
         setShowForm(false);
         setEditingInitiative(null);

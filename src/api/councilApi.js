@@ -157,6 +157,45 @@ export const councilApi = {
     return res.ok;
   },
 
+  async listCouncilsAPI() {
+    const res = await fetch(`${API_BASE}/councils/all`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Object.values(data || {});
+  },
+
+  async createCouncilAPI(council, token) {
+    const res = await fetch(`${API_BASE}/councils/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
+      body: JSON.stringify(council)
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload.error || payload.details || 'Failed to create council');
+    return payload.council;
+  },
+
+  async deleteCouncilAPI(councilId, token) {
+    const res = await fetch(`${API_BASE}/councils/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
+      body: JSON.stringify({ councilId })
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload.error || payload.details || 'Failed to delete council');
+    return true;
+  },
+
+  async trackActivityAPI(activity) {
+    await fetch(`${API_BASE}/activity/track`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(activity), keepalive: true });
+  },
+
+  async getActivityAPI(token) {
+    const res = await fetch(`${API_BASE}/activity/list`, { headers: { Authorization: `Bearer ${token || ''}` }, cache: 'no-store' });
+    if (!res.ok) return [];
+    return (await res.json()).activity || [];
+  },
+
   async getSystemSettings() {
     const res = await fetch(`${API_BASE}/system/settings`);
     if (!res.ok) return { commonsPadlet: "" };

@@ -180,6 +180,19 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
   function handleSubmit(e) {
     e.preventDefault();
     if (dateConflict) return;
+
+    const registrationFormUrl = form.registrationFormUrl?.trim() || '';
+    if (registrationFormUrl) {
+      try {
+        const formUrl = new URL(registrationFormUrl);
+        if (formUrl.protocol !== 'https:' || !(/(^|\.)google\.com$/i.test(formUrl.hostname) || formUrl.hostname === 'forms.gle')) {
+          throw new Error('not a Google URL');
+        }
+      } catch {
+        alert('Please enter a valid HTTPS Google Forms link, or leave the registration form field empty.');
+        return;
+      }
+    }
     
     const id = form.id || generateInitiativeId(councilId, form.title, Date.now());
     
@@ -201,7 +214,7 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
           mainStudents: [],
         };
 
-    onSave({ ...form, id, lead: normalizedLead });
+    onSave({ ...form, id, registrationFormUrl, lead: normalizedLead });
   }
 
   const showcasePadlet = council?.padlets?.showcase;
@@ -273,6 +286,16 @@ export default function InitiativeForm({ councilId, council, initial, onSave, on
                   Another initiative is already scheduled on this date. Please choose a different date.
                 </div>
               )}
+            </div>
+            <div className="sm:col-span-2">
+              <Label>Google Forms Registration Link (optional)</Label>
+              <Input
+                type="url"
+                value={form.registrationFormUrl || ''}
+                onChange={e => setField('registrationFormUrl', e.target.value)}
+                placeholder="https://docs.google.com/forms/d/e/.../viewform"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">Visitors will see a View Form button on the public initiative page.</p>
             </div>
           </div>
         </Section>

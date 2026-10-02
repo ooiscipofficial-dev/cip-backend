@@ -465,6 +465,26 @@ export async function wipeRemoteDatabase() {
   }
   
 }
+
+export async function getCouncils() {
+  return await councilApi.listCouncilsAPI();
+}
+
+export async function createCouncil(council, token) {
+  return await councilApi.createCouncilAPI(council, token);
+}
+
+export async function deleteCouncil(councilId, token) {
+  return await councilApi.deleteCouncilAPI(councilId, token);
+}
+
+export async function trackActivity(activity) {
+  try { await councilApi.trackActivityAPI(activity); } catch (error) { console.warn('Activity tracking failed', error); }
+}
+
+export async function getActivity(token) {
+  return await councilApi.getActivityAPI(token);
+}
 // lib/dataStore.js
 
 // lib/dataStore.js

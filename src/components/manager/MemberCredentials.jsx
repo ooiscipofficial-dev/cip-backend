@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { COUNCILS_DATA, MEMBER_ROLES } from '../../lib/mockData';
 import { Key, Save, Plus, Trash2, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
-import { getMemberCredentials, saveMemberCredentials } from '../../lib/dataStore';
+import { getMemberCredentials, saveMemberCredentials, getCouncils, createCouncil, deleteCouncil } from '../../lib/dataStore';
 
 function normalizeCredentials(credentials) {
   if (!credentials || typeof credentials !== 'object') return {};
@@ -48,7 +48,25 @@ function emptyRoleSlots() {
   return slots;
 }
 
+function validCouncils(items) {
+  return (Array.isArray(items) ? items : [])
+    .filter(council => typeof council?.id === 'string' && council.id.trim() && typeof council?.name === 'string' && council.name.trim())
+    .map(council => ({ ...council, id: council.id.trim(), name: council.name.trim(), color: council.color || '#6366f1' }));
+}
+
+function mergeCouncilsWithDefaults(items) {
+  const liveCouncils = validCouncils(items);
+  const byId = new Map(COUNCILS_DATA.map(council => [council.id, council]));
+
+  liveCouncils.forEach(council => {
+    byId.set(council.id, { ...(byId.get(council.id) || {}), ...council });
+  });
+
+  return Array.from(byId.values());
+}
+
 export default function MemberCredentials({ storeData, session, onClose, onRefresh }) {
+  const [councils, setCouncils] = useState(COUNCILS_DATA);
   const [selectedId, setSelectedId] = useState(COUNCILS_DATA[0].id);
   const [creds, setCreds] = useState(emptyRoleSlots);
   const [savedCreds, setSavedCreds] = useState({});
@@ -56,15 +74,24 @@ export default function MemberCredentials({ storeData, session, onClose, onRefre
   const [expanded, setExpanded] = useState({});
   const [showPwd, setShowPwd] = useState({});
   const [saved, setSaved] = useState(false);
+  const [newCouncil, setNewCouncil] = useState({ name: '', id: '', color: '#6366f1', googleEmail: '' });
+  const [showCouncilForm, setShowCouncilForm] = useState(false);
+  const [councilError, setCouncilError] = useState('');
 
   const hasSavedCredentials = Object.keys(savedCreds).length > 0;
-  const council = COUNCILS_DATA.find(c => c.id === selectedId);
+  const council = councils.find(c => c.id === selectedId);
   const entries = Object.entries(creds);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadCredentials() {
+      if (!selectedId) {
+        setCreds(emptyRoleSlots());
+        setSavedCreds({});
+        setLoadingCreds(false);
+        return;
+      }
       setLoadingCreds(true);
       const loaded = normalizeCredentials(await getMemberCredentials(selectedId, session?.token));
       if (cancelled) return;
@@ -86,6 +113,20 @@ export default function MemberCredentials({ storeData, session, onClose, onRefre
       cancelled = true;
     };
   }, [selectedId, session?.token]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCouncils()
+      .then(items => {
+        const mergedCouncils = mergeCouncilsWithDefaults(items);
+        if (!cancelled && mergedCouncils.length) {
+          setCouncils(mergedCouncils);
+          setSelectedId(current => mergedCouncils.some(c => c.id === current) ? current : mergedCouncils[0].id);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   async function refreshSelectedCredentials() {
     const loaded = normalizeCredentials(await getMemberCredentials(selectedId, session?.token));
@@ -124,6 +165,44 @@ export default function MemberCredentials({ storeData, session, onClose, onRefre
     });
   }
 
+  function updateNewCouncil(field, value) {
+    setNewCouncil(current => ({ ...current, [field]: value }));
+  }
+
+  async function addCouncil() {
+    const name = newCouncil.name.trim();
+    const id = (newCouncil.id.trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
+    if (!name || !id) {
+      setCouncilError('Enter a council name and a valid ID.');
+      return;
+    }
+    try {
+      const created = await createCouncil({ ...newCouncil, name, id }, session?.token);
+      setCouncils(current => [...current, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setSelectedId(created.id);
+      setNewCouncil({ name: '', id: '', color: '#6366f1', googleEmail: '' });
+      setCouncilError('');
+      setShowCouncilForm(false);
+      if (onRefresh) await onRefresh();
+    } catch (error) {
+      setCouncilError(error.message || 'Unable to create the council.');
+    }
+  }
+
+  async function removeCouncil() {
+    if (!council) return;
+    if (!window.confirm(`Delete ${council.name}? This permanently removes its credentials, initiatives, and council data.`)) return;
+    try {
+      await deleteCouncil(council.id, session?.token);
+      const remaining = councils.filter(item => item.id !== council.id);
+      setCouncils(remaining);
+      setSelectedId(remaining[0]?.id || '');
+      if (onRefresh) await onRefresh();
+    } catch (error) {
+      alert(error.message || 'Unable to delete the council.');
+    }
+  }
+
   async function save() {
     const validCreds = {};
     for (const [key, val] of Object.entries(creds)) {
@@ -157,7 +236,7 @@ export default function MemberCredentials({ storeData, session, onClose, onRefre
 
         <div className="flex overflow-hidden flex-1 min-h-0">
           <div className="w-44 border-r border-border bg-muted/20 flex-shrink-0 overflow-y-auto py-2">
-            {COUNCILS_DATA.map(c => (
+            {councils.map(c => (
               <button
                 key={c.id}
                 onClick={() => changeCouncil(c.id)}
@@ -172,6 +251,24 @@ export default function MemberCredentials({ storeData, session, onClose, onRefre
           </div>
 
           <div className="flex-1 overflow-y-auto p-4">
+            <div className="mb-4 rounded-xl border border-border p-3 bg-muted/10">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold">Council Management</p>
+                <button onClick={() => { setShowCouncilForm(value => !value); setCouncilError(''); }} className="flex items-center gap-1 text-xs px-2 py-1 border border-border rounded-lg hover:bg-muted">
+                  <Plus size={11} /> New Council
+                </button>
+              </div>
+              {showCouncilForm && (
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <input value={newCouncil.name} onChange={e => updateNewCouncil('name', e.target.value)} placeholder="Council name" className="col-span-2 w-full px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background" />
+                  <input value={newCouncil.id} onChange={e => updateNewCouncil('id', e.target.value.toLowerCase())} placeholder="ID (optional)" className="w-full px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background" />
+                  <input type="color" value={newCouncil.color} onChange={e => updateNewCouncil('color', e.target.value)} className="h-8 w-full rounded border border-border bg-background" aria-label="Council color" />
+                  <input value={newCouncil.googleEmail} onChange={e => updateNewCouncil('googleEmail', e.target.value)} placeholder="Google email (optional)" className="col-span-2 w-full px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background" />
+                  {councilError && <p className="col-span-2 text-xs text-red-600">{councilError}</p>}
+                  <button onClick={addCouncil} className="col-span-2 px-2.5 py-1.5 text-xs bg-foreground text-background rounded-lg">Create Council</button>
+                </div>
+              )}
+            </div>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-sm font-semibold">{council?.name}</p>
@@ -184,6 +281,9 @@ export default function MemberCredentials({ storeData, session, onClose, onRefre
                 </p>
               </div>
               <div className="flex gap-2">
+                <button onClick={removeCouncil} disabled={!council} className="flex items-center gap-1 text-xs px-2.5 py-1.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-40">
+                  <Trash2 size={11} /> Delete Council
+                </button>
                 <button onClick={addMember} className="flex items-center gap-1 text-xs px-2.5 py-1.5 border border-border rounded-lg hover:bg-muted">
                   <Plus size={11} /> Add
                 </button>
