@@ -444,7 +444,7 @@ export default function CouncilPage({ session }) {
 
         {/* Drive tab */}
         {tab === 'drive' && (
-          <DriveSection councilId={councilId} councilName={council.name} session={session} />
+          <DriveSection councilId={councilId} councilName={council.name} session={session} isPresident={isPresidentUser} />
         )}
 
         {/* Commons tab */}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getSystemSettings, saveSystemSettings } from '../../lib/dataStore';
 import { X, Globe, Save, Loader2 } from 'lucide-react';
+import { toPadletEmbedUrl } from '../../lib/padlet';
 
 export default function CommonsManager({ onClose }) {
   const [url, setUrl] = useState('');
@@ -19,7 +20,7 @@ export default function CommonsManager({ onClose }) {
   async function handleSave() {
     setSaving(true);
     try {
-      const success = await saveSystemSettings({ commonsPadlet: url });
+      const success = await saveSystemSettings({ commonsPadlet: toPadletEmbedUrl(url) });
       if (success) {
         onClose();
       } else {
@@ -57,7 +58,7 @@ export default function CommonsManager({ onClose }) {
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://padlet.com/..."
+              placeholder="https://padlet.com/owner/board-name-s0244emvwv5rchsfwicv"
               disabled={loading || saving}
               className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
             />

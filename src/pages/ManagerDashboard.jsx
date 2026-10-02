@@ -229,13 +229,9 @@ export default function ManagerDashboard({ session }) {
             </div>
             <div className="bg-card border border-border rounded-2xl p-12 text-center">
               <Download size={48} className="mx-auto text-muted-foreground/30 mb-4" />
-              <h2 className="text-lg font-semibold">File Wall Implementation</h2>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
-                Centralized file sharing is scheduled for the next update.
-              </p>
-              <div className="inline-block px-4 py-2 bg-muted rounded-full text-xs font-medium text-muted-foreground italic">
-                Coming soon...
-              </div>
+              <h2 className="text-lg font-semibold">Common File Wall</h2>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">Configure and open the shared Google Drive folder for every council.</p>
+              <Link to="/files" className="inline-flex px-4 py-2 bg-foreground text-background rounded-lg text-xs font-medium">Open File Wall</Link>
             </div>
           </div>
         )}

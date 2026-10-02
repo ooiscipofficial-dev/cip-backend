@@ -205,6 +205,27 @@ export const councilApi = {
     return (await res.json()).activity || [];
   },
 
+  async getDriveLinkAPI(scope, councilId) {
+    const params = new URLSearchParams({ scope });
+    if (councilId) params.set('councilId', councilId);
+    const res = await fetch(`${API_BASE}/drive/link?${params}`, { cache: 'no-store' });
+    if (res.status === 404) throw new Error('Drive links are not available until the updated Worker is deployed.');
+    if (!res.ok) throw new Error('Failed to load Drive link');
+    return (await res.json()).url || '';
+  },
+
+  async saveDriveLinkAPI({ scope, councilId, url, token }) {
+    const res = await fetch(`${API_BASE}/drive/link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
+      body: JSON.stringify({ scope, councilId, url })
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (res.status === 404) throw new Error('Drive links are not available until the updated Worker is deployed.');
+    if (!res.ok) throw new Error(payload.error || 'Failed to save Drive link');
+    return payload.url;
+  },
+
   async getSystemSettings() {
     const res = await fetch(`${API_BASE}/system/settings`);
     if (!res.ok) return { commonsPadlet: "" };

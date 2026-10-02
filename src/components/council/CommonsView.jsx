@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getSystemSettings } from '../../lib/dataStore';
 import { Globe } from 'lucide-react';
+import { toPadletEmbedUrl } from '../../lib/padlet';
 
 export default function CommonsView() {
   const [url, setUrl] = useState('');
@@ -45,7 +46,7 @@ export default function CommonsView() {
         ) : (
           <div className="padlet-embed" style={{ width: '100%', height: '100%' }}>
             <iframe 
-              src={url} 
+              src={toPadletEmbedUrl(url)} 
               frameBorder="0" 
               allow="camera;microphone;geolocation;display-capture;clipboard-write" 
               style={{ width: '100%', height: '100%', padding: 0, margin: 0 }}

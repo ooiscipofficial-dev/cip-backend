@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MessageSquare, User, Trophy, Settings } from 'lucide-react';
 import { API_BASE } from '../../api/councilApi';
+import { toPadletEmbedUrl } from '../../lib/padlet';
 
 const TABS = [
   { id: 'internal', label: 'Internal Comms', icon: <MessageSquare size={12} />, desc: 'Council communication drafts — visible to all council members.' },
@@ -57,7 +58,8 @@ export default function PadletTabs({ council, canManagePadlets, onPadletsUpdated
 
   async function saveUrls() {
     setIsSaving(true);
-    console.log("[Padlet Debug] Attempting Save with Payload:", { id: council.id, padlets: urls });
+    const normalizedUrls = Object.fromEntries(Object.entries(urls).map(([key, value]) => [key, toPadletEmbedUrl(value)]));
+    console.log("[Padlet Debug] Attempting Save with Payload:", { id: council.id, padlets: normalizedUrls });
     
     try {
       const res = await fetch(`${API_BASE}/council/save`, {
@@ -65,7 +67,7 @@ export default function PadletTabs({ council, canManagePadlets, onPadletsUpdated
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: council.id,
-          padlets: urls 
+          padlets: normalizedUrls 
         })
       });
 
@@ -73,6 +75,7 @@ export default function PadletTabs({ council, canManagePadlets, onPadletsUpdated
       console.log("[Padlet Debug] Server Response:", result);
 
       if (res.ok) {
+        setUrls(normalizedUrls);
         setEditingUrls(false);
         if (onPadletsUpdated) {
           console.log("[Padlet Debug] Triggering parent refresh...");
@@ -124,9 +127,11 @@ export default function PadletTabs({ council, canManagePadlets, onPadletsUpdated
                   type="url"
                   value={urls[tab.id] || ''}
                   onChange={e => setUrls(u => ({ ...u, [tab.id]: e.target.value }))}
-                  placeholder="https://padlet.com/..."
+                  onBlur={e => setUrls(u => ({ ...u, [tab.id]: toPadletEmbedUrl(e.target.value) }))}
+                  placeholder="https://padlet.com/owner/board-name-s0244emvwv5rchsfwicv"
                   className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background"
                 />
+                <p className="mt-1 text-[10px] text-muted-foreground">Paste a normal board URL; it saves as https://padlet.com/embed/s0244emvwv5rchsfwicv automatically.</p>
               </div>
             ))}
           </div>
@@ -144,7 +149,7 @@ export default function PadletTabs({ council, canManagePadlets, onPadletsUpdated
         {currentUrl ? (
           <iframe
             key={currentUrl}
-            src={currentUrl.includes('embed') ? currentUrl : currentUrl.replace('padlet.com/', 'padlet.com/embed/')}
+            src={toPadletEmbedUrl(currentUrl)}
             className="w-full h-full bg-white"
             title={currentTab.label}
             allow="camera;microphone;geolocation;display-capture;clipboard-write"

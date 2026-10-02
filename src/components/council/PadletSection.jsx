@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { API_BASE } from '../../api/councilApi';
+import { toPadletEmbedUrl } from '../../lib/padlet';
 
 const PADLET_TABS = [
   { key: 'internal1', label: 'Internal Comms', desc: 'Council communication and coordination' },
@@ -41,7 +42,7 @@ export default function PadletSection({ council, isManager }) {
     if (!newUrl.trim()) return;
 
     try {
-      const updatedPadlets = { ...padlets, [active]: newUrl.trim() };
+      const updatedPadlets = { ...padlets, [active]: toPadletEmbedUrl(newUrl) };
       
       // 1. OPTIMISTIC UPDATE: Update local state immediately
       setPadlets(updatedPadlets);
@@ -93,7 +94,7 @@ export default function PadletSection({ council, isManager }) {
         <div className="mb-4 flex gap-2">
           <input 
             className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-xs"
-            placeholder="Paste Padlet URL here (e.g., https://padlet.com/embed/...)"
+            placeholder="https://padlet.com/owner/board-name-s0244emvwv5rchsfwicv"
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
           />
@@ -118,7 +119,7 @@ export default function PadletSection({ council, isManager }) {
           <div className="padlet-embed" style={{ width: '100%', height: '100%' }}>
             <p style={{ padding: 0, margin: 0, height: '100%' }}>
               <iframe 
-                src={padletUrl} 
+                src={toPadletEmbedUrl(padletUrl)} 
                 frameBorder="0" 
                 allow="camera;microphone;geolocation;display-capture;clipboard-write" 
                 style={{ width: '100%', height: '100%', padding: 0, margin: 0 }}

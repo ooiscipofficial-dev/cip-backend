@@ -489,6 +489,14 @@ export async function getActivity(token) {
 export async function getMonthlyActivity(token, month) {
   return await councilApi.getMonthlyActivityAPI(token, month);
 }
+
+export async function getDriveLink(scope, councilId) {
+  return councilApi.getDriveLinkAPI(scope, councilId);
+}
+
+export async function saveDriveLink(link) {
+  return councilApi.saveDriveLinkAPI(link);
+}
 // lib/dataStore.js
 
 // lib/dataStore.js
